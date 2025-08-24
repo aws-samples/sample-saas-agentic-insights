@@ -14,7 +14,7 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 
 1. WHEN a vendor visits the landing page THEN the system SHALL display registration options for Basic ($29) and Premium ($99) tiers
 2. WHEN a vendor completes registration THEN the system SHALL create a new tenant with unique tenant_id and tier information
-3. WHEN tenant registration is successful THEN the system SHALL provision tier-appropriate resources via EventBridge
+3. WHEN tenant registration is successful THEN the system SHALL provision tier-specific resources via EventBridge
 4. WHEN tenant provisioning completes THEN the system SHALL send a welcome email with tier-specific login credentials
 5. IF registration fails THEN the system SHALL display appropriate error messages and allow retry
 
@@ -27,7 +27,7 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 1. WHEN a user authenticates THEN the tier-specific Cognito User Pool SHALL return a JWT token containing tenant_id and tier as custom claims
 2. WHEN making API requests THEN the frontend SHALL include tenant_id and tier in HTTP headers
 3. WHEN API requests are received THEN the Lambda authorizer SHALL validate JWT, extract tenant_id and tier, and route to appropriate services
-4. WHEN tenant_id and tier are validated THEN the system SHALL allow access to tier-appropriate tenant-specific resources only
+4. WHEN tenant_id and tier are validated THEN the system SHALL allow access to tier-specific tenant-specific resources only
 5. IF tenant_id, tier, or routing information is invalid THEN the system SHALL return 403 Forbidden error
 
 ### Requirement 3: Tenant Admin User Management
@@ -56,13 +56,13 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 
 ### Requirement 5: Shopping Cart and Order Management
 
-**User Story:** As a tenant user, I want to add products to a cart and place orders, so that I can purchase items from the catalog.
+**User Story:** As a tenant user, I want to add products from the catalog to a cart, so that I can create orders.
 
 #### Acceptance Criteria
 
 1. WHEN a user browses products THEN the system SHALL display tenant-specific product catalog
-2. WHEN adding items to cart THEN the system SHALL maintain cart state per user session
-3. WHEN placing an order THEN the system SHALL create order record in tenant-specific silo database
+2. WHEN adding items to cart THEN the system SHALL maintain cart state at the front end
+3. WHEN placing an order THEN the system SHALL create order record in tier-specific database (shared for both Basic and Premium tiers with tenant_id filtering)
 4. WHEN order is created THEN the system SHALL initiate payment processing sequentially
 5. IF cart is empty THEN the system SHALL prevent order placement and display appropriate message
 
@@ -74,7 +74,7 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 
 1. WHEN payment is initiated THEN the system SHALL use mocked payment gateway for processing
 2. WHEN payment is successful THEN the system SHALL update order status to "paid"
-3. WHEN payment completes THEN the system SHALL store payment record in tenant-specific silo database
+3. WHEN payment completes THEN the system SHALL store payment record in tier-specific database (shared for Basic tier, silo for Premium tier)
 4. WHEN payment fails THEN the system SHALL update order status to "payment_failed"
 5. IF payment processing errors occur THEN the system SHALL log errors and notify the user
 
@@ -97,7 +97,7 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 #### Acceptance Criteria
 
 1. WHEN storing products THEN the system SHALL use shared database with tenant_id filtering
-2. WHEN storing orders and payments THEN the system SHALL use tenant-specific silo databases
+2. WHEN storing orders THEN the system SHALL use shared databases with tenant_id filtering for both tiers, and WHEN storing payments THEN the system SHALL use shared database for Basic tier and silo databases for Premium tier
 3. WHEN accessing data THEN the system SHALL enforce tenant context at all API layers
 4. WHEN tenant context is missing THEN the system SHALL deny access and log security events
 5. IF cross-tenant data access is attempted THEN the system SHALL block and alert administrators
@@ -123,8 +123,8 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 1. WHEN a Basic tier tenant is provisioned THEN the system SHALL create user group in Basic Cognito User Pool and use shared application plane resources
 2. WHEN a Premium tier tenant is provisioned THEN the system SHALL create user group in Premium Cognito User Pool, use shared Premium Product and Order Services, and create silo Payment service and database
 3. WHEN baseline infrastructure is deployed THEN the system SHALL pre-create all shared resources for both Basic and Premium tiers
-4. WHEN routing API requests THEN the system SHALL direct tenants to tier-appropriate service endpoints based on tenant tier
-5. IF tier information is missing or invalid THEN the system SHALL default to Basic tier resources and log the incident
+4. WHEN routing API requests THEN the system SHALL direct tenants to tier-specific service endpoints based on tenant tier
+5. IF tier information is missing or invalid THEN the system SHALL throw a user friendly error message and log the incident
 
 ### Requirement 11: Tenant Deprovisioning
 
@@ -133,7 +133,7 @@ This document outlines the requirements for a multi-tenant Agentic Insights SaaS
 #### Acceptance Criteria
 
 1. WHEN a SaaS admin initiates tenant deprovisioning THEN the system SHALL require admin authentication
-2. WHEN deprovisioning starts THEN the system SHALL delete tier-appropriate tenant-specific resources (silo Payment service and database for Premium, user groups for both tiers)
+2. WHEN deprovisioning starts THEN the system SHALL delete tier-specific tenant-specific resources (silo Payment service and database for Premium, user groups for both tiers)
 3. WHEN deprovisioning completes THEN the system SHALL remove tenant record from control plane database
 4. WHEN deprovisioning is successful THEN the system SHALL send confirmation to the admin
 5. IF deprovisioning fails THEN the system SHALL log errors and allow manual cleanup intervention

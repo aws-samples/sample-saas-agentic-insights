@@ -164,13 +164,11 @@ def lambda_handler(event, context):
 - `/app/basic/products` - Shared product catalog
 - `/app/basic/orders` - Shared order management
 - `/app/basic/payments` - Shared payment processing
-- `/app/basic/cart` - Shared shopping cart operations
 
 **Premium Tier Application Plane APIs:**
 - `/app/premium/products` - Premium shared product catalog
 - `/app/premium/orders` - Premium shared order management
 - `/app/premium/{tenant_id}/payments` - Silo payment processing
-- `/app/premium/cart` - Premium shared shopping cart operations
 
 ### Microservices Design
 
@@ -214,19 +212,24 @@ class TenantService:
 class ProductService:
     def create_product(self, tenant_id, product_data):
         # Validate tenant context
-        # Store in shared DB with tenant_id
-        # Handle image uploads to S3
+        # Handle image uploads to S3 using AWS SDK
+        # Generate secure image URLs with presigned URLs
+        # Validate image format and size
+        # Store product data in shared DB with tenant_id
         
     def get_products(self, tenant_id):
         # Filter by tenant_id
-        # Return tenant-specific catalog
+        # Return tenant-specific catalog with image URLs
+        
+    def delete_product_images(self, tenant_id, product_id):
+        # Clean up S3 objects for tenant deprovisioning
 ```
 
 **Order Service:**
 ```python
 class OrderService:
     def create_order(self, tenant_id, user_id, cart_items):
-        # Store in tenant-specific silo DB
+        # Store in shared DB with tenant_id filtering
         # Calculate totals
         # Initiate payment processing
         # Return order_id
@@ -397,13 +400,21 @@ class OrderService:
 
 ### Payment Processing Errors
 
-**Mock Payment Gateway:**
+**Payment Service with Integrated Mock Gateway:**
 ```python
-class MockPaymentGateway:
-    def process_payment(self, amount, card_info):
+class PaymentService:
+    def process_payment(self, tenant_id, order_id, amount, card_info):
+        # Validate tenant context
+        # Simulate mock payment gateway processing
+        # Generate random failures (10% rate)
+        # Create transaction_id and log for workshop demo
+        # Store payment record in tier-appropriate database
+        # Return payment status and transaction details
+        
+    def _mock_payment_gateway(self, amount, card_info):
+        # Internal mock payment processing logic
         # Simulate random failures (10% rate)
         # Return success/failure with transaction_id
-        # Log all transactions for workshop demo
 ```
 
 ## Testing Strategy
