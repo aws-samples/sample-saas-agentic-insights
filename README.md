@@ -53,6 +53,44 @@ The solution follows a **Control Plane** and **Application Plane** architecture 
    ./scripts/deploy-ai-desc-agent.sh
    ```
 
+#### Smart Configuration Management
+
+The deployment script automatically generates and manages configuration files for all web applications:
+
+**Automatic Configuration**:
+- ✅ **Auto-generated config** - API URLs and CloudFront URLs automatically populated
+- ✅ **Change detection** - Only redeploys web apps when URLs actually change
+- ✅ **Region-agnostic** - Works seamlessly across all AWS regions
+- ✅ **Single source of truth** - All configuration centralized in `web/shared/config.js`
+
+**Deployment Options**:
+```bash
+# Normal deployment - only redeploys web apps if configuration changed
+./scripts/deploy.sh
+
+# Force deployment - always redeploys web apps (useful for testing)
+./scripts/deploy.sh --force
+```
+
+**Configuration Structure**:
+```javascript
+// Auto-generated web/shared/config.js
+window.APP_CONFIG = {
+    CONTROL_PLANE_API_URL: 'https://api-id.execute-api.region.amazonaws.com/prod',
+    APP_PLANE_API_URL: 'https://api-id.execute-api.region.amazonaws.com/prod',
+    SAAS_APP_URL: 'https://cloudfront-id.cloudfront.net',
+    ADMIN_PANEL_URL: 'https://cloudfront-id.cloudfront.net',
+    LANDING_PAGE_URL: 'https://cloudfront-id.cloudfront.net',
+    REGION: 'us-east-2'
+};
+```
+
+**Benefits**:
+- 🚀 **Faster deployments** - Skips unnecessary web app redeployments
+- 🔧 **No manual updates** - Configuration automatically synced with infrastructure
+- 🌍 **Multi-region ready** - Deploy to any region without code changes
+- ⚡ **Efficient caching** - CloudFront cache only invalidated when needed
+
 #### Deployment to Different AWS Region
 
 To deploy the solution to a different AWS region (e.g., us-east-2, eu-west-1):
@@ -133,6 +171,9 @@ agentic-insights-saas/
 │       ├── user/                   # User management
 │       └── user-creation/          # EventBridge user creation
 ├── web/                            # Frontend Applications
+│   ├── shared/                     # Shared configuration
+│   │   ├── config.template.js      # Configuration template
+│   │   └── config.js               # Auto-generated config (deployment)
 │   ├── landing-page/               # Tenant registration
 │   ├── admin-panel/                # Platform management
 │   └── saas-app/                   # E-commerce application
@@ -178,6 +219,8 @@ agentic-insights-saas/
 
 ### Operational Excellence
 - **Automated Deployment**: One-command deployment with configuration updates
+- **Smart Configuration Management**: Auto-generated config files with change detection
+- **Efficient Deployments**: Only redeploys web apps when URLs actually change
 - **Smart Cleanup**: Comprehensive resource removal with S3 bucket emptying
 - **Admin Tools**: Dashboard statistics and tenant management interface
 - **Monitoring Ready**: Structured logging and error tracking
@@ -272,6 +315,8 @@ Beyond the core specifications, this implementation includes several enhancement
 
 ### 🚀 **Operational Excellence**
 - **Smart Deployment Scripts**: Automatic configuration updates and admin user creation
+- **Centralized Configuration**: Auto-generated config files with change detection and region portability
+- **Efficient Deployments**: Only redeploys web apps when URLs actually change, with force flag support
 - **Intelligent Cleanup**: S3 bucket emptying and premium table cleanup
 - **Colored Console Output**: Enhanced deployment feedback with progress indicators
 - **Responsive Design**: Mobile-optimized layouts with modern CSS animations

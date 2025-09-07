@@ -37,9 +37,9 @@ export class AIDescriptionStack extends cdk.Stack {
 
     // Create IAM role for Bedrock agent
     const bedrockAgentRole = new iam.Role(this, 'BedrockAgentRole', {
-      roleName: `${agentName}-execution-role`,
+      roleName: `${agentName}-execution-role-${this.region}`,
       assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
-      description: `Execution role for Bedrock agent ${agentName}`,
+      description: `Execution role for Bedrock agent ${agentName} in ${this.region}`,
       inlinePolicies: {
         BedrockAgentPolicy: new iam.PolicyDocument({
           statements: [
@@ -62,8 +62,8 @@ export class AIDescriptionStack extends cdk.Stack {
 
     // Create Bedrock Agent
     this.bedrockAgent = new bedrock.CfnAgent(this, 'BedrockAgent', {
-      agentName: agentName,
-      description: agentDescription,
+      agentName: `${agentName}-${this.region}`,
+      description: `${agentDescription} in ${this.region}`,
       agentResourceRoleArn: bedrockAgentRole.roleArn,
       foundationModel: agentModel,
       instruction: agentInstructions,

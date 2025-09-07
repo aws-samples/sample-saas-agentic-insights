@@ -2,6 +2,8 @@
 
 # Agentic Insights SaaS - Deployment Script
 # This script deploys the complete multi-tenant e-commerce SaaS platform
+# Usage: ./deploy.sh [--force]
+#   --force: Force redeploy web apps even if configuration unchanged
 
 set -e  # Exit on any error
 
@@ -31,6 +33,13 @@ print_warning() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+# Check for force flag
+FORCE_REDEPLOY=false
+if [ "$1" = "--force" ]; then
+    FORCE_REDEPLOY=true
+    print_status "Force redeploy enabled"
+fi
 
 # Check prerequisites
 print_status "Checking prerequisites..."
@@ -132,37 +141,68 @@ SAAS_APP_URL=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].Outputs[?OutputKey==`SaasAppUrl`].OutputValue' \
     --output text 2>/dev/null || echo "")
 
-# Update frontend configuration files
-print_status "Updating frontend configuration..."
+# Generate shared configuration file with change detection
+generate_shared_config() {
+    print_status "Checking configuration changes..."
+    
+    local config_file="web/shared/config.js"
+    local temp_config="/tmp/new_config.js"
+    
+    # Generate new config in temp location
+    cat > "$temp_config" << EOF
+// Auto-generated configuration file
+// This file is generated during deployment and should not be edited manually
+window.APP_CONFIG = {
+    CONTROL_PLANE_API_URL: '$CONTROL_PLANE_API',
+    APP_PLANE_API_URL: '$APP_PLANE_API',
+    SAAS_APP_URL: '$SAAS_APP_URL',
+    ADMIN_PANEL_URL: '$ADMIN_PANEL_URL',
+    LANDING_PAGE_URL: '$LANDING_PAGE_URL',
+    REGION: '$AWS_REGION'
+};
+EOF
 
-if [ -n "$CONTROL_PLANE_API" ] && [ -n "$APP_PLANE_API" ]; then
-    # Update Landing Page configuration
-    if [ -f "web/landing-page/script.js" ]; then
-        sed -i.bak "s|https://your-control-plane-api.execute-api.region.amazonaws.com/prod|$CONTROL_PLANE_API|g" web/landing-page/script.js
-        sed -i.bak "s|https://your-saas-app.cloudfront.net|$SAAS_APP_URL|g" web/landing-page/script.js
-        rm web/landing-page/script.js.bak 2>/dev/null || true
+    # Check if config changed
+    if [ ! -f "$config_file" ] || ! cmp -s "$config_file" "$temp_config"; then
+        print_status "Configuration changed, updating web apps..."
+        
+        # Update shared config
+        cp "$temp_config" "$config_file"
+        
+        # Copy config.js to each web application
+        cp "$config_file" web/admin-panel/config.js
+        cp "$config_file" web/saas-app/config.js
+        cp "$config_file" web/landing-page/config.js
+        
+        print_success "Configuration updated and copied to all web apps"
+        return 0  # Changed
+    else
+        print_status "Configuration unchanged, skipping web app update"
+        return 1  # No change
     fi
     
-    # Update SaaS App configuration
-    if [ -f "web/saas-app/script.js" ]; then
-        sed -i.bak "s|https://your-app-plane-api.execute-api.region.amazonaws.com/prod|$APP_PLANE_API|g" web/saas-app/script.js
-        sed -i.bak "s|https://your-control-plane-api.execute-api.region.amazonaws.com/prod|$CONTROL_PLANE_API|g" web/saas-app/script.js
-        rm web/saas-app/script.js.bak 2>/dev/null || true
+    # Cleanup temp file
+    rm -f "$temp_config"
+}
+
+# Generate and distribute config, check if changed
+CONFIG_CHANGED=false
+if generate_shared_config; then
+    CONFIG_CHANGED=true
+fi
+
+# Conditional redeployment based on configuration changes or force flag
+if [ "$CONFIG_CHANGED" = true ] || [ "$FORCE_REDEPLOY" = true ]; then
+    if [ "$FORCE_REDEPLOY" = true ]; then
+        print_status "Force redeploy requested, updating web applications..."
+    else
+        print_status "Configuration changed, redeploying web applications..."
     fi
-    
-    # Update Admin Panel configuration
-    if [ -f "web/admin-panel/script.js" ]; then
-        sed -i.bak "s|https://your-control-plane-api.execute-api.region.amazonaws.com/prod|$CONTROL_PLANE_API|g" web/admin-panel/script.js
-        rm web/admin-panel/script.js.bak 2>/dev/null || true
-    fi
-    
-    print_success "Frontend configuration updated"
-    
-    # Redeploy to update the web applications with new configuration
-    print_status "Redeploying to update web applications..."
     cdk deploy AgenticInsightsAppPlane --require-approval never
+    print_success "Web applications updated"
 else
-    print_warning "Could not retrieve API URLs. You may need to manually update the frontend configuration."
+    print_status "No configuration changes detected, skipping web app redeployment"
+    print_status "Use --force flag to redeploy anyway: ./deploy.sh --force"
 fi
 
 # Create admin user function with robust input handling
