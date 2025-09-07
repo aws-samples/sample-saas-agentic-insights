@@ -1,3 +1,0 @@
-later : Ok for the front end, lets go with React + Typescript with responsive design and  modern looking styling (and we will add the charts support later). Let me konw what changes to be done based on this requirement first.  
-
-
