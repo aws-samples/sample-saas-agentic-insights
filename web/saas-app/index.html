@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Insights - E-commerce Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>Login to Your Store</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="login-btn">Login</button>
+                </div>
+            </form>
+            <div id="login-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🛍️ <span id="tenant-name">Your Store</span></h1>
+                <div class="header-actions">
+                    <div class="cart-summary" id="cart-summary" style="display: none;">
+                        <span class="cart-icon">🛒</span>
+                        <span id="cart-count">0</span> items
+                        <span id="cart-total">$0.00</span>
+                    </div>
+                    <div class=\"user-info">
+                        <span id="current-user-email"></span>
+                        <button id="logout-btn" class="logout-btn">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="app-container">
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar">
+                <ul class="nav-menu">
+                    <li><a href="#" data-section="products" class="nav-link active">📦 Products</a></li>
+                    <li><a href="#" data-section="orders" class="nav-link">📋 Orders</a></li>
+                    <li id="users-nav" style="display: none;"><a href="#" data-section="users" class="nav-link">👥 Users</a></li>
+                </ul>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- Products Section -->
+                <section id="products-section" class="content-section active">
+                    <div class="section-header">
+                        <h2>Products</h2>
+                        <button id="add-product-btn" class="btn btn-primary" style="display: none;">Add Product</button>
+                    </div>
+
+                    <!-- Product List -->
+                    <div class="product-grid" id="product-grid">
+                        <div class="loading">Loading products...</div>
+                    </div>
+
+                    <!-- Shopping Cart Actions -->
+                    <div class="cart-actions" id="cart-actions" style="display: none;">
+                        <button id="create-order-btn" class="btn btn-success">Create Order</button>
+                        <button id="clear-cart-btn" class="btn btn-secondary">Clear Cart</button>
+                    </div>
+                </section>
+
+                <!-- Orders Section -->
+                <section id="orders-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Orders</h2>
+                    </div>
+                    <div class="orders-list" id="orders-list">
+                        <div class="loading">Loading orders...</div>
+                    </div>
+                </section>
+
+                <!-- Users Section -->
+                <section id="users-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Users</h2>
+                        <button id="add-user-btn" class="btn btn-primary">Add User</button>
+                    </div>
+                    <div class="users-list" id="users-list">
+                        <div class="loading">Loading users...</div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="product-modal-title">Add Product</h3>
+                <button class="close-btn" id="close-product-modal">&times;</button>
+            </div>
+            <form id="product-form">
+                <div class="form-group">
+                    <label for="product-name">Product Name *</label>
+                    <input type="text" id="product-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="product-description">Description *</label>
+                    <div class="description-input-group">
+                        <textarea id="product-description" rows="3" required></textarea>
+                        <button type="button" id="generate-description-btn" class="btn btn-secondary generate-btn" disabled>
+                            <span class="generate-text">Generate</span>
+                            <span class="generate-loading" style="display: none;">
+                                <span class="spinner"></span> Generating...
+                            </span>
+                        </button>
+                    </div>
+                    <div id="generate-error" class="error-message" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label for="product-price">Price *</label>
+                    <input type="number" id="product-price" step="0.01" min="0" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="save-product-btn">Save Product</button>
+                    <button type="button" id="cancel-product-btn">Cancel</button>
+                </div>
+            </form>
+            <div id="product-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="user-modal-title">Add User</h3>
+                <button class="close-btn" id="close-user-modal">&times;</button>
+            </div>
+            <form id="user-form">
+                <div class="form-group">
+                    <label for="user-email">Email *</label>
+                    <input type="email" id="user-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-password">Password *</label>
+                    <input type="password" id="user-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="user-role">Role *</label>
+                    <select id="user-role" required>
+                        <option value="tenant_user">Tenant User</option>
+                        <option value="tenant_admin">Tenant Admin</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="save-user-btn">Save User</button>
+                    <button type="button" id="cancel-user-btn">Cancel</button>
+                </div>
+            </form>
+            <div id="user-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Product Details Modal -->
+    <div id="product-details-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="product-details-title">Product Details</h3>
+                <button class="close-btn" id="close-product-details">&times;</button>
+            </div>
+            <div class="product-details" id="product-details-content">
+                <!-- Product details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script src="auth.js"></script>
+    <script src="cart.js"></script>
+    <script src="products.js"></script>
+    <script src="orders.js"></script>
+    <script src="users.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

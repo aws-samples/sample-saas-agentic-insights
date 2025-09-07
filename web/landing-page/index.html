@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Insights - Multi-Tenant E-commerce SaaS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🚀 Agentic Insights</h1>
+            <p class="tagline">Multi-Tenant E-commerce SaaS Platform</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <h2>Start Your E-commerce Journey Today</h2>
+            <p>Choose the perfect plan for your business and get started in minutes</p>
+        </section>
+
+        <section class="pricing">
+            <div class="pricing-cards">
+                <div class="pricing-card" data-tier="basic">
+                    <div class="card-header">
+                        <h3>Basic</h3>
+                        <div class="price">$29<span>/month</span></div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="features">
+                            <li>✅ Shared Product Catalog</li>
+                            <li>✅ Shared Order Management</li>
+                            <li>✅ Basic User Management</li>
+                            <li>✅ Cost-Optimized Resources</li>
+                            <li>✅ 24/7 Support</li>
+                        </ul>
+                        <button class="select-plan-btn" data-tier="basic">Select Basic</button>
+                    </div>
+                </div>
+
+                <div class="pricing-card premium" data-tier="premium">
+                    <div class="card-header">
+                        <h3>Premium</h3>
+                        <div class="price">$99<span>/month</span></div>
+                        <div class="badge">Most Popular</div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="features">
+                            <li>✅ Dedicated Order Database</li>
+                            <li>✅ Enhanced Data Isolation</li>
+                            <li>✅ Advanced User Management</li>
+                            <li>✅ Priority Support</li>
+                            <li>✅ Better Performance</li>
+                        </ul>
+                        <button class="select-plan-btn" data-tier="premium">Select Premium</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="registration" id="registration-section" style="display: none;">
+            <div class="registration-form">
+                <h3>Complete Your Registration</h3>
+                <form id="registration-form">
+                    <div class="selected-plan">
+                        <span>Selected Plan: </span>
+                        <strong id="selected-tier"></strong>
+                        <button type="button" id="change-plan">Change Plan</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tenant-name">Company Name *</label>
+                        <input type="text" id="tenant-name" name="tenant_name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="admin-email">Admin Email *</label>
+                        <input type="email" id="admin-email" name="admin_email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="admin-password">Admin Password *</label>
+                        <input type="password" id="admin-password" name="admin_password" required>
+                        <small>Minimum 8 characters with uppercase, lowercase, numbers, and symbols</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm-password">Confirm Password *</label>
+                        <input type="password" id="confirm-password" name="confirm_password" required>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="register-btn">Create Account</button>
+                        <button type="button" id="cancel-btn">Cancel</button>
+                    </div>
+                </form>
+
+                <div id="error-message" class="error-message" style="display: none;"></div>
+                <div id="success-message" class="success-message" style="display: none;"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Agentic Insights. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Insights - Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>Admin Login</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="admin-email">Admin Email</label>
+                    <input type="email" id="admin-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="login-btn">Login</button>
+                </div>
+            </form>
+            <div id="login-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>🔧 Agentic Insights Admin Panel</h1>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <span id="admin-email-display"></span>
+                        <button id="logout-btn" class="logout-btn">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="app-container">
+            <!-- Dashboard Stats -->
+            <section class="dashboard-stats">
+                <div class="stat-card">
+                    <h3>Total Tenants</h3>
+                    <div class="stat-number" id="total-tenants">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Basic Tier</h3>
+                    <div class="stat-number" id="basic-tenants">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Premium Tier</h3>
+                    <div class="stat-number" id="premium-tenants">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Tenants</h3>
+                    <div class="stat-number" id="active-tenants">0</div>
+                </div>
+            </section>
+
+            <!-- Tenant Management -->
+            <section class="tenant-management">
+                <div class="section-header">
+                    <h2>Tenant Management</h2>
+                    <button id="add-tenant-btn" class="btn btn-primary">Add Tenant</button>
+                </div>
+
+                <!-- Tenant List -->
+                <div class="tenant-list" id="tenant-list">
+                    <div class="loading">Loading tenants...</div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Add Tenant Modal -->
+    <div id="tenant-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Tenant</h3>
+                <button class="close-btn" id="close-tenant-modal">&times;</button>
+            </div>
+            <form id="tenant-form">
+                <div class="form-group">
+                    <label for="tenant-name">Company Name *</label>
+                    <input type="text" id="tenant-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="tenant-email">Admin Email *</label>
+                    <input type="email" id="tenant-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="tenant-tier">Tier *</label>
+                    <select id="tenant-tier" required>
+                        <option value="">Select Tier</option>
+                        <option value="basic">Basic ($29/month)</option>
+                        <option value="premium">Premium ($99/month)</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="save-tenant-btn">Create Tenant</button>
+                    <button type="button" id="cancel-tenant-btn">Cancel</button>
+                </div>
+            </form>
+            <div id="tenant-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Tenant Details Modal -->
+    <div id="tenant-details-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tenant Details</h3>
+                <button class="close-btn" id="close-tenant-details">&times;</button>
+            </div>
+            <div class="tenant-details" id="tenant-details-content">
+                <!-- Tenant details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
