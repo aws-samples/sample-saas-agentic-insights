@@ -4,10 +4,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# CDK
-*.js
-*.js.map
-*.d.ts
+# CDK compiled outputs (only track .ts source files)
+infra/*.js
+infra/*.js.map
+infra/*.d.ts
 cdk.out/
 cdk.context.json
 

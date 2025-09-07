@@ -34,7 +34,7 @@ The solution follows a **Control Plane** and **Application Plane** architecture 
 
 ### Deployment
 
-#### Default Deployment (us-east-1)
+#### Default Deployment
 
 1. **Clone and setup**:
    ```bash
@@ -45,12 +45,12 @@ The solution follows a **Control Plane** and **Application Plane** architecture 
 
 2. **Deploy to AWS**:
    ```bash
-   ./scripts/deploy.sh
+   ./scripts/lab-01.1-deploy-base-architecture.sh
    ```
 
 3. **Deploy AI Product Description Agent** (Optional):
    ```bash
-   ./scripts/deploy-ai-desc-agent.sh
+   ./scripts/lab-01.2-deploy-product-description-ai-agent.sh
    ```
 
 #### Smart Configuration Management
@@ -66,10 +66,10 @@ The deployment script automatically generates and manages configuration files fo
 **Deployment Options**:
 ```bash
 # Normal deployment - only redeploys web apps if configuration changed
-./scripts/deploy.sh
+./scripts/lab-01.1-deploy-base-architecture.sh
 
 # Force deployment - always redeploys web apps (useful for testing)
-./scripts/deploy.sh --force
+./scripts/lab-01.1-deploy-base-architecture.sh --force
 ```
 
 **Configuration Structure**:
@@ -81,7 +81,7 @@ window.APP_CONFIG = {
     SAAS_APP_URL: 'https://cloudfront-id.cloudfront.net',
     ADMIN_PANEL_URL: 'https://cloudfront-id.cloudfront.net',
     LANDING_PAGE_URL: 'https://cloudfront-id.cloudfront.net',
-    REGION: 'us-east-2'
+    REGION: '<region_name>'
 };
 ```
 
@@ -122,7 +122,7 @@ To deploy the solution to a different AWS region (e.g., us-east-2, eu-west-1):
 
 4. **Deploy to new region**:
    ```bash
-   ./scripts/deploy.sh
+   ./scripts/lab-01.1-deploy-base-architecture.sh
    ```
 
 #### Region-Specific Considerations
@@ -178,7 +178,7 @@ agentic-insights-saas/
 │   ├── admin-panel/                # Platform management
 │   └── saas-app/                   # E-commerce application
 ├── scripts/                        # Deployment scripts
-│   ├── deploy.sh                   # Full deployment
+│   ├── lab-01.1-deploy-base-architecture.sh # Lab 01.1: Base deployment
 │   └── delete-all.sh               # Complete cleanup
 └── specs/                          # Documentation
     ├── requirements.md             # Detailed requirements

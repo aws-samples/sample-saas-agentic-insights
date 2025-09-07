@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AI Product Description Generator Deployment Script
+# Lab 01.2: Deploy Product Description AI Agent
 # This script deploys a complete AI-powered product description generator
 # using Amazon Bedrock Agent with Claude 3 Haiku via CDK
 
@@ -105,7 +105,14 @@ get_aws_context() {
     print_status "Getting AWS context..."
     
     AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-    AWS_REGION=$(aws configure get region || echo "us-east-1")
+    AWS_REGION=$(aws configure get region)
+    
+    if [ -z "$AWS_REGION" ]; then
+        print_error "AWS region is not set. Please configure your AWS region:"
+        echo "  aws configure set region <region_name>"
+        echo "  or export AWS_DEFAULT_REGION=<region_name>"
+        exit 1
+    fi
     
     print_status "Deploying to AWS Account: $AWS_ACCOUNT_ID in Region: $AWS_REGION"
 }

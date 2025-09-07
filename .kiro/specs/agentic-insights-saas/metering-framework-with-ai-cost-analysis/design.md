@@ -2286,7 +2286,6 @@ PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGION=${AWS_REGION:-us-east-1}
 PROFILE=${AWS_PROFILE:-default}
 ENVIRONMENT=${ENVIRONMENT:-dev}
 
@@ -2576,7 +2575,7 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  -h, --help     Show this help message"
-    echo "  -r, --region   AWS region (default: us-east-1)"
+    echo "  -r, --region   AWS region"
     echo "  -p, --profile  AWS profile (default: default)"
     echo "  -e, --env      Environment (default: dev)"
     echo ""
@@ -2641,7 +2640,6 @@ PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGION=${AWS_REGION:-us-east-1}
 PROFILE=${AWS_PROFILE:-default}
 
 echo -e "${PURPLE}🧹 Cleaning up Metering Framework with AI Cost Analysis${NC}"

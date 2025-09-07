@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Agentic Insights SaaS - Deployment Script
-# This script deploys the complete multi-tenant e-commerce SaaS platform
-# Usage: ./deploy.sh [--force]
+# Lab 01.1: Deploy Base Architecture
+# This script deploys the foundational multi-tenant e-commerce SaaS platform
+# Usage: ./lab-01.1-deploy-base-architecture.sh [--force]
 #   --force: Force redeploy web apps even if configuration unchanged
 
 set -e  # Exit on any error
 
-echo "🚀 Starting deployment of Agentic Insights SaaS Platform..."
+echo "🚀 Lab 01.1: Deploying Base Architecture..."
 echo "=================================================="
 
 # Colors for output
@@ -81,8 +81,10 @@ AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 AWS_REGION=$(aws configure get region)
 
 if [ -z "$AWS_REGION" ]; then
-    AWS_REGION="us-east-1"
-    print_warning "No default region found, using us-east-1"
+    print_error "AWS region is not set. Please configure your AWS region:"
+    echo "  aws configure set region <region_name>"
+    echo "  or export AWS_DEFAULT_REGION=<region_name>"
+    exit 1
 fi
 
 print_status "Deploying to AWS Account: $AWS_ACCOUNT in Region: $AWS_REGION"
@@ -166,6 +168,9 @@ EOF
     if [ ! -f "$config_file" ] || ! cmp -s "$config_file" "$temp_config"; then
         print_status "Configuration changed, updating web apps..."
         
+        # Create shared directory if it doesn't exist
+        mkdir -p web/shared
+        
         # Update shared config
         cp "$temp_config" "$config_file"
         
@@ -202,7 +207,7 @@ if [ "$CONFIG_CHANGED" = true ] || [ "$FORCE_REDEPLOY" = true ]; then
     print_success "Web applications updated"
 else
     print_status "No configuration changes detected, skipping web app redeployment"
-    print_status "Use --force flag to redeploy anyway: ./deploy.sh --force"
+    print_status "Use --force flag to redeploy anyway: ./lab-01.1-deploy-base-architecture.sh --force"
 fi
 
 # Create admin user function with robust input handling

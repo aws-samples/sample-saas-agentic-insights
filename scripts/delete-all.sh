@@ -76,7 +76,10 @@ AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 AWS_REGION=$(aws configure get region)
 
 if [ -z "$AWS_REGION" ]; then
-    AWS_REGION="us-east-1"
+    print_error "AWS region is not set. Please configure your AWS region:"
+    echo "  aws configure set region <region_name>"
+    echo "  or export AWS_DEFAULT_REGION=<region_name>"
+    exit 1
 fi
 
 print_status "Cleaning up from AWS Account: $AWS_ACCOUNT in Region: $AWS_REGION"
@@ -242,5 +245,5 @@ echo
 echo "⚠️  Note: Some resources may take a few minutes to be fully deleted."
 echo "   You can check the CloudFormation console to monitor the deletion progress."
 echo
-echo "🔄 To redeploy the solution, run: ./scripts/deploy.sh"
+echo "🔄 To redeploy the solution, run: ./scripts/lab-01.1-deploy-base-architecture.sh"
 echo "=================================================="

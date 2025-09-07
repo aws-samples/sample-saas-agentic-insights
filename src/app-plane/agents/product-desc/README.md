@@ -17,7 +17,7 @@ AI agent for generating compelling e-commerce product descriptions using Amazon 
 
 ## Deployment
 
-The agent is deployed automatically via `scripts/deploy-ai-desc-agent.sh`.
+The agent is deployed automatically via `scripts/lab-01.2-deploy-product-description-ai-agent.sh`.
 
 ## Usage
 
