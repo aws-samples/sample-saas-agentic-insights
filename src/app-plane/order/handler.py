@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 from decimal import Decimal
 
-# Configure structured logging
+# Configure structured logging - Updated for tier-based routing fix
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -53,7 +53,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         request_context = event.get('requestContext', {})
         authorizer_context = request_context.get('authorizer', {})
         tenant_id = authorizer_context.get('tenant_id')
-        tier = authorizer_context.get('tier', 'basic')
+        tier = authorizer_context.get('tier')
         user_id = authorizer_context.get('user_id')
         
         logger.info(json.dumps({

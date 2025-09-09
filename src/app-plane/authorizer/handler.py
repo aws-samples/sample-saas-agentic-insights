@@ -3,7 +3,7 @@ import base64
 import os
 from typing import Dict, Any
 
-# Updated: Fixed JWT import issue
+# Updated: Fixed JWT import issue and tier detection from custom attributes
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Simple Lambda authorizer for API Gateway"""
     try:
@@ -35,18 +35,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             decoded_payload = base64.urlsafe_b64decode(payload)
             claims = json.loads(decoded_payload.decode('utf-8'))
             
+            print(f"Claims object: {json.dumps(claims, indent=2)}")
+            
             # Extract tenant context
             tenant_id = claims.get('custom:tenant_id')
             role = claims.get('custom:role', 'tenant_user')
+            tier = claims.get('custom:tier')
             
-            print(f"Tenant ID: {tenant_id}, Role: {role}")
+            print(f"Tenant ID: {tenant_id}, Role: {role}, Tier: {tier}")
             
             if not tenant_id:
                 raise Exception('Missing tenant_id in token')
             
-            # Determine tier from issuer
-            issuer = claims.get('iss', '')
-            tier = 'premium' if 'yFhMg8tON' in issuer else 'basic'  # Premium pool ID check
+            if not tier:
+                raise Exception('Missing tier in token')
             
             # Generate allow policy with wildcard for all HTTP methods
             # Convert specific method ARN to wildcard pattern

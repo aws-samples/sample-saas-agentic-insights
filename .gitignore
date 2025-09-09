@@ -43,3 +43,8 @@ build/
 # Coverage
 coverage/
 *.lcov
+
+# Generated config files (created during deployment)
+web/admin-panel/config.js
+web/landing-page/config.js
+web/saas-app/config.js

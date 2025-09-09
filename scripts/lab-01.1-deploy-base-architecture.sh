@@ -2,8 +2,7 @@
 
 # Lab 01.1: Deploy Base Architecture
 # This script deploys the foundational multi-tenant e-commerce SaaS platform
-# Usage: ./lab-01.1-deploy-base-architecture.sh [--force]
-#   --force: Force redeploy web apps even if configuration unchanged
+# Usage: ./lab-01.1-deploy-base-architecture.sh
 
 set -e  # Exit on any error
 
@@ -33,13 +32,6 @@ print_warning() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
-
-# Check for force flag
-FORCE_REDEPLOY=false
-if [ "$1" = "--force" ]; then
-    FORCE_REDEPLOY=true
-    print_status "Force redeploy enabled"
-fi
 
 # Check prerequisites
 print_status "Checking prerequisites..."
@@ -143,16 +135,12 @@ SAAS_APP_URL=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].Outputs[?OutputKey==`SaasAppUrl`].OutputValue' \
     --output text 2>/dev/null || echo "")
 
-# Generate shared configuration file with change detection
-generate_shared_config() {
+# Generate web application configuration files directly with change detection
+generate_web_configs() {
     print_status "Checking configuration changes..."
     
-    local config_file="web/shared/config.js"
-    local temp_config="/tmp/new_config.js"
-    
-    # Generate new config in temp location
-    cat > "$temp_config" << EOF
-// Auto-generated configuration file
+    # Generate config content
+    local config_content="// Auto-generated configuration file
 // This file is generated during deployment and should not be edited manually
 window.APP_CONFIG = {
     CONTROL_PLANE_API_URL: '$CONTROL_PLANE_API',
@@ -161,53 +149,52 @@ window.APP_CONFIG = {
     ADMIN_PANEL_URL: '$ADMIN_PANEL_URL',
     LANDING_PAGE_URL: '$LANDING_PAGE_URL',
     REGION: '$AWS_REGION'
-};
-EOF
+};"
 
-    # Check if config changed
-    if [ ! -f "$config_file" ] || ! cmp -s "$config_file" "$temp_config"; then
-        print_status "Configuration changed, updating web apps..."
+    # Check if any config file is missing or content has changed
+    local config_changed=false
+    local temp_config="/tmp/new_config.js"
+    echo "$config_content" > "$temp_config"
+    
+    for app_dir in "web/admin-panel" "web/saas-app" "web/landing-page"; do
+        local config_file="$app_dir/config.js"
+        if [ ! -f "$config_file" ] || ! cmp -s "$config_file" "$temp_config"; then
+            config_changed=true
+            break
+        fi
+    done
+    
+    if [ "$config_changed" = true ]; then
+        print_status "Configuration changed, updating web application configs..."
         
-        # Create shared directory if it doesn't exist
-        mkdir -p web/shared
+        # Write to each web application
+        echo "$config_content" > web/admin-panel/config.js
+        echo "$config_content" > web/saas-app/config.js
+        echo "$config_content" > web/landing-page/config.js
         
-        # Update shared config
-        cp "$temp_config" "$config_file"
-        
-        # Copy config.js to each web application
-        cp "$config_file" web/admin-panel/config.js
-        cp "$config_file" web/saas-app/config.js
-        cp "$config_file" web/landing-page/config.js
-        
-        print_success "Configuration updated and copied to all web apps"
+        print_success "Configuration files updated for all web applications"
+        rm -f "$temp_config"
         return 0  # Changed
     else
-        print_status "Configuration unchanged, skipping web app update"
+        print_status "Configuration unchanged, skipping config update"
+        rm -f "$temp_config"
         return 1  # No change
     fi
-    
-    # Cleanup temp file
-    rm -f "$temp_config"
 }
 
 # Generate and distribute config, check if changed
 CONFIG_CHANGED=false
-if generate_shared_config; then
+if generate_web_configs; then
     CONFIG_CHANGED=true
 fi
 
-# Conditional redeployment based on configuration changes or force flag
-if [ "$CONFIG_CHANGED" = true ] || [ "$FORCE_REDEPLOY" = true ]; then
-    if [ "$FORCE_REDEPLOY" = true ]; then
-        print_status "Force redeploy requested, updating web applications..."
-    else
-        print_status "Configuration changed, redeploying web applications..."
-    fi
+# Conditional redeployment based on configuration changes
+if [ "$CONFIG_CHANGED" = true ]; then
+    print_status "Configuration changed, redeploying web applications..."
     cdk deploy AgenticInsightsAppPlane --require-approval never
     print_success "Web applications updated"
 else
     print_status "No configuration changes detected, skipping web app redeployment"
-    print_status "Use --force flag to redeploy anyway: ./lab-01.1-deploy-base-architecture.sh --force"
 fi
 
 # Create admin user function with robust input handling
