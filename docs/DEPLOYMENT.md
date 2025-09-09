@@ -57,7 +57,7 @@ After the base deployment, the console output will show the following CloudFront
 TODO
 ```
 
-### Lab 03: Adding other Insight Agents & Insight Dashbaord
+### Lab 03: Adding other Insight Agents & Insight Dashboard
 ```bash
 TODO
 ```
@@ -71,7 +71,7 @@ TODO
 ## Cleanup
 
 ```bash
-./scripts/delete-all.sh
+./scripts/delete-all.sh (TODO: need to update this)
 ```
 
 ## Workshop link 
