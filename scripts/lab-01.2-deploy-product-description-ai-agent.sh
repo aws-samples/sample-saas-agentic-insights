@@ -50,13 +50,16 @@ main() {
     # Step 3: Deploy CDK stack (creates everything)
     deploy_cdk_stack
     
-    # Step 4: Wait for agent to be prepared
+    # Step 4: Verify and ensure API Gateway deployment
+    verify_api_gateway_deployment
+    
+    # Step 5: Wait for agent to be prepared
     wait_for_agent_preparation
     
-    # Step 5: Verify deployment
+    # Step 6: Verify deployment
     verify_deployment
     
-    # Step 6: Display results
+    # Step 7: Display results
     display_results
 }
 
@@ -152,6 +155,63 @@ deploy_cdk_stack() {
         print_status "Alias ID: $BEDROCK_AGENT_ALIAS_ID"
     else
         print_warning "Could not retrieve agent IDs from CDK outputs"
+    fi
+}
+
+verify_api_gateway_deployment() {
+    print_status "Ensuring API Gateway deployment..."
+    
+    # Get API Gateway ID
+    local api_id=$(aws cloudformation describe-stacks \
+        --stack-name AgenticInsightsAppPlane \
+        --query "Stacks[0].Outputs[?OutputKey=='ExportsOutputRefAppPlaneApi1864DF3FAA9EC325'].OutputValue" \
+        --output text 2>/dev/null)
+    
+    if [ -z "$api_id" ] || [ "$api_id" = "None" ]; then
+        print_warning "⚠️ Could not find API Gateway ID, skipping deployment"
+        return
+    fi
+    
+    print_status "Found API Gateway ID: $api_id"
+    
+    # Always force deployment
+    local deployment_id=$(aws apigateway create-deployment \
+        --rest-api-id "$api_id" \
+        --stage-name prod \
+        --description "Deploy AI endpoints - $(date)" \
+        --query 'id' \
+        --output text 2>/dev/null)
+    
+    if [ -n "$deployment_id" ]; then
+        print_status "Deployment initiated (ID: $deployment_id), waiting for readiness..."
+        
+        local endpoint_url="https://${api_id}.execute-api.${AWS_REGION}.amazonaws.com/prod/ai/generate-description"
+        local max_attempts=12
+        local attempt=1
+        
+        while [ $attempt -le $max_attempts ]; do
+            sleep 10
+            
+            # Test CORS (should return 204 when ready)
+            local status_code=$(curl -X OPTIONS \
+                -H "Origin: https://example.com" \
+                -H "Access-Control-Request-Method: POST" \
+                -H "Access-Control-Request-Headers: Content-Type,Authorization" \
+                -s -o /dev/null -w "%{http_code}" \
+                "$endpoint_url" 2>/dev/null || echo "000")
+            
+            if [ "$status_code" = "204" ]; then
+                print_success "✅ API Gateway endpoint is ready!"
+                return
+            fi
+            
+            print_status "Attempt $attempt/$max_attempts: Status $status_code, waiting..."
+            attempt=$((attempt + 1))
+        done
+        
+        print_warning "⚠️ Endpoint may not be fully ready, but continuing..."
+    else
+        print_warning "⚠️ Could not force API Gateway deployment"
     fi
 }
 

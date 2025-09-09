@@ -121,7 +121,7 @@ export class AIDescriptionStack extends cdk.Stack {
       rootResourceId: props.appPlaneApiRootResourceId,
     });
 
-    // Create AI resource under existing API Gateway
+    // Create AI resource exactly like basic/premium resources
     const aiResource = existingApi.root.addResource('ai');
     const generateDescResource = aiResource.addResource('generate-description');
 
@@ -131,34 +131,40 @@ export class AIDescriptionStack extends cdk.Stack {
       proxy: true,
     });
 
-    // Add POST method with authorizer
+    // Add POST method with authorizer (exact same pattern as orders)
     generateDescResource.addMethod('POST', productDescIntegration, {
       authorizer: props.authorizer
     });
 
-    // Add manual CORS configuration
+    // Add explicit OPTIONS method without authorization (like working endpoints)
     generateDescResource.addMethod('OPTIONS', new apigateway.MockIntegration({
       integrationResponses: [{
-        statusCode: '200',
+        statusCode: '204',
         responseParameters: {
-          'method.response.header.Access-Control-Allow-Headers': "'Content-Type,Authorization,tenant-id,tier-name'",
-          'method.response.header.Access-Control-Allow-Methods': "'POST,OPTIONS'",
+          'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,tenant-id,tier-name'",
+          'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
           'method.response.header.Access-Control-Allow-Origin': "'*'",
         },
       }],
       passthroughBehavior: apigateway.PassthroughBehavior.NEVER,
       requestTemplates: {
-        'application/json': '{"statusCode": 200}',
+        'application/json': '{"statusCode": 204}',
       },
     }), {
       methodResponses: [{
-        statusCode: '200',
+        statusCode: '204',
         responseParameters: {
           'method.response.header.Access-Control-Allow-Headers': true,
           'method.response.header.Access-Control-Allow-Methods': true,
           'method.response.header.Access-Control-Allow-Origin': true,
         },
       }],
+    });
+
+    // Force API Gateway deployment to make endpoints immediately available
+    new apigateway.Deployment(this, 'AIEndpointDeployment', {
+      api: existingApi,
+      description: 'Deploy AI endpoints to prod stage',
     });
 
     // Outputs
