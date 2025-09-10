@@ -49,11 +49,23 @@ This document outlines the requirements for a comprehensive Metering Framework w
 
 #### Acceptance Criteria
 
-1. WHEN designing storage THEN the system SHALL use DynamoDB with tenant_id as partition key and timestamp_event as sort key
+1. WHEN designing storage THEN the system SHALL use DynamoDB with tenant_id as partition key and timestamp_event as sort key for raw metrics
 2. WHEN creating indexes THEN the system SHALL implement GSIs for event_type, tier_name, and service_name for efficient querying
 3. WHEN storing metrics THEN the system SHALL include TTL attribute for automatic data cleanup after 30 days
 4. WHEN querying metrics THEN the system SHALL support time-range queries, tenant filtering, and service-specific analysis
 5. WHEN managing data THEN the system SHALL ensure tenant isolation at the database level
+
+### Requirement 4.1: Metrics Aggregation Service and Storage
+
+**User Story:** As a system architect, I want real-time metrics aggregation from raw usage data, so that AI agents can efficiently analyze tenant costs without processing individual events.
+
+#### Acceptance Criteria
+
+1. WHEN raw metrics are stored THEN the MetricsAggregatorService SHALL process DynamoDB streams in real-time
+2. WHEN aggregating metrics THEN the system SHALL create tenant-level usage summaries by metric type and date
+3. WHEN storing aggregated data THEN the system SHALL use MetricsAggregationTable with tenant_id, metric_name, and date as composite key
+4. WHEN processing streams THEN the system SHALL aggregate API calls, Lambda executions, DynamoDB operations, and Bedrock usage
+5. WHEN updating aggregations THEN the system SHALL use atomic DynamoDB operations to ensure data consistency
 
 ### Requirement 5: Amazon Bedrock Agent for AI Cost Analysis
 

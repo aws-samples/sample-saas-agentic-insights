@@ -25,6 +25,7 @@ graph TB
     
     subgraph "Control Plane - Metrics Processing"
         METRICS_SVC[MetricsService<br/>Lambda Function]
+        METRICS_AGG[MetricsAggregatorService<br/>Lambda Function]
         COST_API[Cost Analysis API<br/>Lambda Function]
     end
     
@@ -36,6 +37,7 @@ graph TB
     
     subgraph "Data Storage Layer"
         METRICS_DB[Metrics DynamoDB<br/>Raw tenant metrics]
+        METRICS_AGG_DB[MetricsAggregationTable<br/>Tenant usage summaries]
         TENANT_DB[Tenant Management DB<br/>Tier information]
     end
     
@@ -56,6 +58,8 @@ graph TB
     RULES --> METRICS_SVC
     
     METRICS_SVC --> METRICS_DB
+    METRICS_DB --> METRICS_AGG
+    METRICS_AGG --> METRICS_AGG_DB
     
     ADMIN_DASH --> NAV
     NAV --> COST_PAGE
@@ -63,8 +67,7 @@ graph TB
     
     COST_API --> BEDROCK_AGENT
     BEDROCK_AGENT --> ACTION_GROUPS
-    ACTION_GROUPS --> METRICS_DB
-    ACTION_GROUPS --> INSIGHTS_DB
+    ACTION_GROUPS --> METRICS_AGG_DB
     ACTION_GROUPS --> TENANT_DB
     
     BEDROCK_AGENT --> CLAUDE_HAIKU
@@ -84,6 +87,12 @@ The system follows a layered architecture with clear separation of concerns:
 
 ```
 Application Services → Metrics Library → EventBridge → MetricsService → DynamoDB
+                                                                           ↓
+                                                                    DynamoDB Streams
+                                                                           ↓
+                                                              MetricsAggregatorService
+                                                                           ↓
+                                                               MetricsAggregationTable
                                                                            ↓
 Admin Dashboard → Cost API → Bedrock Agent → Action Groups → AI Analysis
 ```
@@ -579,7 +588,6 @@ def lambda_handler(event, context):
                 'user_id': detail.get('user_id'),
                 'metadata': detail.get('metadata', {}),
                 'performance': detail.get('performance', {}),
-                'costs': detail.get('costs', {}),
                 'ttl': int((datetime.now().timestamp() + (30 * 24 * 60 * 60)))  # 30 days TTL for metrics cleanup
             }
             
@@ -598,6 +606,101 @@ def lambda_handler(event, context):
             'failed': failed_count
         })
     }
+```
+
+### 3.1. MetricsAggregatorService (DynamoDB Streams Consumer)
+
+```python
+# src/control-plane/metrics-aggregator/metrics_aggregator_service.py
+import json
+import boto3
+import os
+from datetime import datetime
+from decimal import Decimal
+
+def lambda_handler(event, context):
+    """
+    MetricsAggregatorService
+    Process DynamoDB Stream events from MetricsTable
+    Aggregate raw usage metrics by tenant and metric type per day
+    """
+    
+    processed_count = 0
+    failed_count = 0
+    
+    for record in event['Records']:
+        try:
+            if record['eventName'] in ['INSERT', 'MODIFY']:
+                metrics_item = record['dynamodb']['NewImage']
+                
+                tenant_id = metrics_item['tenant_id']['S']
+                event_type = metrics_item['event_type']['S']
+                date = extract_date(metrics_item['timestamp']['S'])
+                metadata = json.loads(metrics_item['metadata']['S'])
+                
+                # Aggregate usage metrics by type
+                aggregate_usage_metrics(tenant_id, date, event_type, metadata)
+                processed_count += 1
+                
+        except Exception as e:
+            print(f"Failed to process metrics aggregation: {str(e)}")
+            failed_count += 1
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({
+            'processed': processed_count,
+            'failed': failed_count
+        })
+    }
+
+def aggregate_usage_metrics(tenant_id, date, event_type, metadata):
+    """Aggregate usage metrics by type for AI Agent processing"""
+    
+    aggregation_table = boto3.resource('dynamodb').Table(os.environ['METRICS_AGGREGATION_TABLE_NAME'])
+    
+    if event_type == 'api.request':
+        update_metric_sum(aggregation_table, tenant_id, date, 'api_gateway_requests', 1)
+        
+    elif event_type == 'lambda.execution':
+        memory_gb = metadata.get('memory_allocated_mb', 0) / 1024
+        duration_seconds = metadata.get('execution_duration_ms', 0) / 1000
+        gb_seconds = memory_gb * duration_seconds
+        
+        update_metric_sum(aggregation_table, tenant_id, date, 'lambda_gb_seconds', gb_seconds)
+        update_metric_sum(aggregation_table, tenant_id, date, 'lambda_requests', 1)
+        
+    elif event_type == 'dynamodb.operation':
+        rcu = metadata.get('consumed_read_capacity', 0)
+        wcu = metadata.get('consumed_write_capacity', 0)
+        
+        update_metric_sum(aggregation_table, tenant_id, date, 'dynamodb_rcu_consumed', rcu)
+        update_metric_sum(aggregation_table, tenant_id, date, 'dynamodb_wcu_consumed', wcu)
+        
+    elif event_type == 'bedrock.invocation':
+        input_tokens = metadata.get('input_tokens', 0)
+        output_tokens = metadata.get('output_tokens', 0)
+        
+        update_metric_sum(aggregation_table, tenant_id, date, 'agent_ai_prod_desc_input_token', input_tokens)
+        update_metric_sum(aggregation_table, tenant_id, date, 'agent_ai_prod_desc_output_token', output_tokens)
+
+def update_metric_sum(table, tenant_id, date, metric_name, value):
+    """Atomically update metric sum using DynamoDB expressions"""
+    
+    table.update_item(
+        Key={
+            'tenant_id': tenant_id,
+            'metric_name': metric_name,
+            'date': date
+        },
+        UpdateExpression='ADD #sum :value',
+        ExpressionAttributeNames={'#sum': 'sum'},
+        ExpressionAttributeValues={':value': Decimal(str(value))}
+    )
+
+def extract_date(timestamp_str):
+    """Extract date from ISO timestamp"""
+    return datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')).strftime('%Y-%m-%d')
 ```
 
 ### 4. Amazon Bedrock Agent Configuration
@@ -905,10 +1008,10 @@ def lambda_handler(event, context):
         }
 
 def calculate_infrastructure_usage(tenant_ids, time_period, aggregate):
-    """Calculate infrastructure usage from metrics data"""
+    """Calculate infrastructure usage from aggregated metrics data"""
     
     dynamodb = boto3.resource('dynamodb')
-    metrics_table = dynamodb.Table(os.environ['METRICS_TABLE_NAME'])
+    metrics_aggregation_table = dynamodb.Table(os.environ['METRICS_AGGREGATION_TABLE_NAME'])
     
     # Calculate time range
     end_time = datetime.now()
@@ -933,16 +1036,8 @@ def calculate_infrastructure_usage(tenant_ids, time_period, aggregate):
         if not tenant_id.strip():
             continue
             
-        # Query metrics for this tenant
-        response = metrics_table.query(
-            KeyConditionExpression=Key('tenant_id').eq(tenant_id) & 
-                                 Key('timestamp_event').between(
-                                     start_time.isoformat(),
-                                     end_time.isoformat()
-                                 )
-        )
-        
-        tenant_usage = analyze_tenant_metrics(response['Items'])
+        # Query aggregated metrics for this tenant
+        tenant_usage = get_tenant_aggregated_usage(metrics_aggregation_table, tenant_id, start_time, end_time)
         all_usage[tenant_id] = tenant_usage
         
         # Aggregate totals
@@ -974,6 +1069,73 @@ def calculate_infrastructure_usage(tenant_ids, time_period, aggregate):
             'tenant_usage': all_usage,
             'platform_totals': total_costs
         }
+
+def get_tenant_aggregated_usage(metrics_aggregation_table, tenant_id, start_time, end_time):
+    """Get aggregated usage data for a single tenant"""
+    
+    # AWS pricing constants (Claude 3 Haiku pricing)
+    pricing = {
+        'api_gateway_requests': 3.50e-6,  # $3.50 per million requests
+        'lambda_gb_second': 0.0000166667,  # $0.0000166667 per GB-second
+        'lambda_request': 2.0e-7,  # $0.20 per million requests
+        'dynamodb_wcu': 1.25e-6,  # $1.25 per million WCUs
+        'dynamodb_rcu': 0.25e-6,  # $0.25 per million RCUs
+        'claude_haiku_input_token': 0.25e-6,  # $0.25 per million input tokens
+        'claude_haiku_output_token': 1.25e-6,  # $1.25 per million output tokens
+    }
+    
+    service_costs = {
+        'lambda': 0,
+        'dynamodb': 0,
+        'api_gateway': 0,
+        'bedrock': 0,
+        's3': 0,
+        'other': 0
+    }
+    
+    # Query aggregated metrics for date range
+    date_range = []
+    current_date = start_time.date()
+    while current_date <= end_time.date():
+        date_range.append(current_date.strftime('%Y-%m-%d'))
+        current_date += timedelta(days=1)
+    
+    for date in date_range:
+        # Get all metrics for this tenant on this date
+        response = metrics_aggregation_table.query(
+            KeyConditionExpression=Key('tenant_id').eq(tenant_id),
+            FilterExpression=Attr('date').eq(date)
+        )
+        
+        for item in response['Items']:
+            metric_name = item['metric_name']
+            sum_value = float(item['sum'])
+            
+            if metric_name == 'api_gateway_requests':
+                service_costs['api_gateway'] += sum_value * pricing['api_gateway_requests']
+            elif metric_name == 'lambda_gb_seconds':
+                service_costs['lambda'] += sum_value * pricing['lambda_gb_second']
+            elif metric_name == 'lambda_requests':
+                service_costs['lambda'] += sum_value * pricing['lambda_request']
+            elif metric_name == 'dynamodb_rcu_consumed':
+                service_costs['dynamodb'] += sum_value * pricing['dynamodb_rcu']
+            elif metric_name == 'dynamodb_wcu_consumed':
+                service_costs['dynamodb'] += sum_value * pricing['dynamodb_wcu']
+            elif metric_name == 'agent_ai_prod_desc_input_token':
+                service_costs['bedrock'] += sum_value * pricing['claude_haiku_input_token']
+            elif metric_name == 'agent_ai_prod_desc_output_token':
+                service_costs['bedrock'] += sum_value * pricing['claude_haiku_output_token']
+    
+    total_cost = sum(service_costs.values())
+    
+    return {
+        'service_costs': service_costs,
+        'total_cost': total_cost,
+        'metrics': {
+            'api_calls': sum_value if metric_name == 'api_gateway_requests' else 0,
+            'ai_generations': sum_value if metric_name == 'agent_ai_prod_desc_input_token' else 0
+        }
+    }
 
 def analyze_tenant_metrics(metrics):
     """Analyze metrics for a single tenant"""
@@ -1595,15 +1757,61 @@ dels
         "status_code": 200,
         "request_size_bytes": 1024,
         "response_size_bytes": 2048,
-        "estimated_cost": 0.0000035
+        "memory_allocated_mb": 512,
+        "execution_duration_ms": 1200,
+        "consumed_read_capacity": 2.5,
+        "consumed_write_capacity": 1.0,
+        "input_tokens": 45,
+        "output_tokens": 120
     },
     "performance": {
         "response_time_ms": 245
     },
-    "costs": {
-        "total_cost": 0.0000035
-    },
     "ttl": 1735689045  # 30 days retention
+}
+```
+
+### MetricsAggregationTable Schema
+
+```python
+# Table: MetricsAggregationTable
+# Partition Key: tenant_id (string)
+# Sort Key: metric_name (string)
+# Additional Key: date (string) - part of composite primary key
+
+{
+    "tenant_id": "tenant-123",
+    "metric_name": "api_gateway_requests",
+    "date": "2024-08-26",
+    "sum": 1500
+}
+
+{
+    "tenant_id": "tenant-123", 
+    "metric_name": "lambda_gb_seconds",
+    "date": "2024-08-26",
+    "sum": 245.67
+}
+
+{
+    "tenant_id": "tenant-123",
+    "metric_name": "dynamodb_rcu_consumed",
+    "date": "2024-08-26",
+    "sum": 1250.5
+}
+
+{
+    "tenant_id": "tenant-123",
+    "metric_name": "agent_ai_prod_desc_input_token",
+    "date": "2024-08-26",
+    "sum": 50000
+}
+
+{
+    "tenant_id": "tenant-123",
+    "metric_name": "agent_ai_prod_desc_output_token",
+    "date": "2024-08-26",
+    "sum": 15000
 }
 ```
 

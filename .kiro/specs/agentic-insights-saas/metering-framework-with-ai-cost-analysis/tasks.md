@@ -24,12 +24,14 @@
   - Test event flow from application services through EventBridge to storage
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 4. Create Metrics DynamoDB Table
+- [ ] 4. Create Metrics DynamoDB Table and Aggregation Service
   - Design MetricsTable with tenant_id partition key and timestamp_event sort key
   - Implement Global Secondary Indexes for event_type, tier_name, and service_name
   - Configure TTL attributes for automatic data cleanup (30 days for metrics)
+  - Create MetricsAggregationTable with tenant_id, metric_name, and date as composite key
+  - Implement MetricsAggregatorService to process DynamoDB streams and aggregate usage metrics
   - Add proper IAM permissions for Lambda functions to access tables
-  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5_
 
 - [ ] 5. Develop Amazon Bedrock Agent Infrastructure
   - Create CDK stack for Bedrock Agent with Claude 3 Haiku foundation model
@@ -40,7 +42,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 6. Implement Infrastructure Usage Action Group
-  - Create Lambda function for infrastructure usage calculation with DynamoDB query logic
+  - Create Lambda function for infrastructure usage calculation with MetricsAggregationTable query logic
   - Implement tenant metrics aggregation by service type (Lambda, DynamoDB, API Gateway, Bedrock, S3)
   - Add platform-wide cost totals and per-tenant average calculations
   - Include cost trend analysis and primary driver identification
