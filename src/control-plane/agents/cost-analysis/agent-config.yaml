@@ -1,0 +1,6 @@
+name: agentic-insights-cost-analysis-agent
+description: AI agent for SaaS cost analysis and tenant economics for Agentic Insights platform
+model: us.anthropic.claude-3-haiku-20240307-v1:0
+idle_session_ttl: 1800
+alias_name: prod
+alias_description: Production alias for the cost analysis agent

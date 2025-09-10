@@ -3,9 +3,18 @@ import boto3
 import uuid
 import os
 import logging
+import time
 from datetime import datetime
 from typing import Dict, Any, List
 from decimal import Decimal
+
+# Import metrics collector from Lambda Layer
+try:
+    from metrics_collector import MetricsCollector
+    METRICS_ENABLED = True
+except ImportError:
+    METRICS_ENABLED = False
+    print("Metrics collector not available - running without metrics")
 
 # Configure structured logging - Updated for tier-based routing fix
 logger = logging.getLogger()
@@ -24,6 +33,8 @@ cors_headers = {
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Handle order management operations with tier-specific routing"""
+    
+    start_time = time.time()
     
     logger.info(json.dumps({
         "event": "order_request_started",
@@ -55,6 +66,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         tenant_id = authorizer_context.get('tenant_id')
         tier = authorizer_context.get('tier')
         user_id = authorizer_context.get('user_id')
+        
+        # Initialize metrics collector
+        metrics = None
+        if METRICS_ENABLED and tenant_id and tier:
+            metrics = MetricsCollector("order-service", tenant_id, tier)
         
         logger.info(json.dumps({
             "event": "tenant_context_extracted",
@@ -91,19 +107,37 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }))
         
         if http_method == 'GET':
-            return list_orders(tenant_id, table_name)
+            result = list_orders(tenant_id, table_name, metrics)
         elif http_method == 'POST':
-            return create_order(event, tenant_id, user_id, table_name)
+            result = create_order(event, tenant_id, user_id, table_name, metrics)
         else:
             logger.warning(json.dumps({
                 "event": "method_not_allowed",
                 "http_method": http_method
             }))
-            return {
+            result = {
                 'statusCode': 405,
                 'headers': cors_headers,
                 'body': json.dumps({'error': 'Method not allowed'})
             }
+        
+        # Track successful API request
+        if metrics:
+            execution_time = (time.time() - start_time) * 1000
+            metrics.track_api_request(
+                endpoint=event.get('resource', '/orders'),
+                method=http_method,
+                status_code=result.get('statusCode', 200),
+                response_time_ms=execution_time,
+                user_id=user_id
+            )
+            metrics.track_lambda_execution(
+                function_name=context.function_name,
+                memory_mb=int(context.memory_limit_in_mb),
+                duration_ms=execution_time
+            )
+        
+        return result
             
     except ValueError as e:
         logger.error(json.dumps({
@@ -111,22 +145,42 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "error": str(e),
             "error_type": "ValueError"
         }))
-        return {
+        result = {
             'statusCode': 400,
             'headers': cors_headers,
             'body': json.dumps({'error': str(e)})
         }
+        # Track error response
+        if metrics:
+            execution_time = (time.time() - start_time) * 1000
+            metrics.track_api_request(
+                endpoint=event.get('resource', '/orders'),
+                method=event.get('httpMethod', 'UNKNOWN'),
+                status_code=400,
+                response_time_ms=execution_time
+            )
+        return result
     except Exception as e:
         logger.error(json.dumps({
             "event": "order_service_error",
             "error": str(e),
             "error_type": type(e).__name__
         }))
-        return {
+        result = {
             'statusCode': 500,
             'headers': cors_headers,
             'body': json.dumps({'error': 'Internal server error'})
         }
+        # Track error response
+        if metrics:
+            execution_time = (time.time() - start_time) * 1000
+            metrics.track_api_request(
+                endpoint=event.get('resource', '/orders'),
+                method=event.get('httpMethod', 'UNKNOWN'),
+                status_code=500,
+                response_time_ms=execution_time
+            )
+        return result
 
 def get_order_table_name(tenant_id: str, tier: str) -> str:
     """Get the appropriate order table name based on tier"""
@@ -193,7 +247,7 @@ def get_order_table_name(tenant_id: str, tier: str) -> str:
         }))
         return ORDERS_TABLE
 
-def list_orders(tenant_id: str, table_name: str) -> Dict[str, Any]:
+def list_orders(tenant_id: str, table_name: str, metrics=None) -> Dict[str, Any]:
     """List all orders for a tenant"""
     cors_headers = {
         'Content-Type': 'application/json',
@@ -222,6 +276,14 @@ def list_orders(tenant_id: str, table_name: str) -> Dict[str, Any]:
             ExpressionAttributeValues={':tenant_id': tenant_id},
             ScanIndexForward=False  # Sort by order_id descending (newest first)
         )
+        
+        # Track DynamoDB operation
+        if metrics:
+            metrics.track_dynamodb_operation(
+                table_name=table_name,
+                operation="Query",
+                consumed_rcu=len(response['Items']) * 0.5  # Estimate RCU consumption
+            )
         
         logger.info(json.dumps({
             "event": "orders_query_completed",
@@ -276,7 +338,7 @@ def list_orders(tenant_id: str, table_name: str) -> Dict[str, Any]:
             'body': json.dumps({'error': 'Failed to list orders'})
         }
 
-def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name: str) -> Dict[str, Any]:
+def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name: str, metrics=None) -> Dict[str, Any]:
     """Create a new multi-product order"""
     try:
         body = json.loads(event['body']) if isinstance(event.get('body'), str) else event.get('body', {})
@@ -354,6 +416,16 @@ def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name
         }
         
         table.put_item(Item=order_item)
+        
+        # Track DynamoDB operation
+        if metrics:
+            item_size = len(json.dumps(order_item, default=str))
+            metrics.track_dynamodb_operation(
+                table_name=table_name,
+                operation="PutItem",
+                consumed_wcu=1.0,  # Standard write operation
+                consumed_rcu=0
+            )
         
         # Convert Decimal to float for response
         response_items = []

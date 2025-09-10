@@ -15,6 +15,8 @@ import { Construct } from 'constructs';
 
 interface AppPlaneStackProps extends cdk.StackProps {
   eventBus: events.EventBus;
+  metricsCollectorLayer?: lambda.LayerVersion;
+  metricsEventBusName?: string;
 }
 
 export class AppPlaneStack extends cdk.Stack {
@@ -119,8 +121,10 @@ export class AppPlaneStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/app-plane/product'),
+      layers: props.metricsCollectorLayer ? [props.metricsCollectorLayer] : [],
       environment: {
         PRODUCTS_TABLE: productsTable.tableName,
+        METRICS_EVENT_BUS_NAME: props.metricsEventBusName || props.eventBus.eventBusName,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -130,8 +134,10 @@ export class AppPlaneStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/app-plane/order'),
+      layers: props.metricsCollectorLayer ? [props.metricsCollectorLayer] : [],
       environment: {
         ORDERS_TABLE: ordersTable.tableName,
+        METRICS_EVENT_BUS_NAME: props.metricsEventBusName || props.eventBus.eventBusName,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -153,11 +159,13 @@ export class AppPlaneStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/app-plane/user'),
+      layers: props.metricsCollectorLayer ? [props.metricsCollectorLayer] : [],
       environment: {
         BASIC_USER_POOL_ID: basicTierUserPool.userPoolId,
         BASIC_USER_POOL_CLIENT_ID: basicTierUserPoolClient.userPoolClientId,
         PREMIUM_USER_POOL_ID: premiumTierUserPool.userPoolId,
         PREMIUM_USER_POOL_CLIENT_ID: premiumTierUserPoolClient.userPoolClientId,
+        METRICS_EVENT_BUS_NAME: props.metricsEventBusName || props.eventBus.eventBusName,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -203,6 +211,17 @@ export class AppPlaneStack extends cdk.Stack {
       ],
       resources: [basicTierUserPool.userPoolArn, premiumTierUserPool.userPoolArn],
     }));
+
+    // Grant EventBridge permissions for metrics collection
+    if (props.metricsCollectorLayer) {
+      [productFunction, orderFunction, userFunction].forEach(fn => {
+        fn.addToRolePolicy(new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ['events:PutEvents'],
+          resources: [props.eventBus.eventBusArn],
+        }));
+      });
+    }
 
     // API Gateway for Application Plane
     this.appPlaneApi = new apigateway.RestApi(this, 'AppPlaneApi', {
