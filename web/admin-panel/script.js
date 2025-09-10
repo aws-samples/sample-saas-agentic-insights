@@ -22,6 +22,15 @@ const AdminApp = {
             this.showApp();
             this.loadAdminInfo();
             this.loadDashboard();
+            
+            // Initialize navigation and load dashboard page immediately
+            setTimeout(() => {
+                if (!window.navigationController) {
+                    window.navigationController = new NavigationController();
+                }
+                // Force load dashboard page immediately
+                window.navigationController.navigateToPage('dashboard');
+            }, 50);
         } else {
             this.showLoginModal();
         }
@@ -33,23 +42,42 @@ const AdminApp = {
     // Initialize all event listeners
     initializeEventListeners() {
         // Login form
-        document.getElementById('login-form').addEventListener('submit', this.handleLogin.bind(this));
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', this.handleLogin.bind(this));
+        }
         
         // Logout button
-        document.getElementById('logout-btn').addEventListener('click', this.handleLogout.bind(this));
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', this.handleLogout.bind(this));
+        }
         
         // Add tenant button
-        document.getElementById('add-tenant-btn').addEventListener('click', this.showAddTenantModal.bind(this));
+        const addTenantBtn = document.getElementById('add-tenant-btn');
+        if (addTenantBtn) {
+            addTenantBtn.addEventListener('click', this.showAddTenantModal.bind(this));
+        }
         
         // Tenant form
-        document.getElementById('tenant-form').addEventListener('submit', this.handleTenantSubmit.bind(this));
-        document.getElementById('cancel-tenant-btn').addEventListener('click', this.closeTenantModal.bind(this));
+        const tenantForm = document.getElementById('tenant-form');
+        if (tenantForm) {
+            tenantForm.addEventListener('submit', this.handleTenantSubmit.bind(this));
+        }
+        
+        // Cancel tenant button
+        const cancelTenantBtn = document.getElementById('cancel-tenant-btn');
+        if (cancelTenantBtn) {
+            cancelTenantBtn.addEventListener('click', this.closeTenantModal.bind(this));
+        }
         
         // Modal close buttons
         document.querySelectorAll('.close-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const modal = e.target.closest('.modal');
-                modal.style.display = 'none';
+                if (modal) {
+                    modal.style.display = 'none';
+                }
             });
         });
     },
@@ -100,6 +128,15 @@ const AdminApp = {
                 this.loadAdminInfo();
                 this.loadDashboard();
                 
+                // Initialize navigation and load dashboard page immediately
+                setTimeout(() => {
+                    if (!window.navigationController) {
+                        window.navigationController = new NavigationController();
+                    }
+                    // Force load dashboard page immediately
+                    window.navigationController.navigateToPage('dashboard');
+                }, 50);
+                
             } else {
                 const errorData = await response.json();
                 this.showLoginError(errorData.error || 'Login failed');
@@ -136,13 +173,13 @@ const AdminApp = {
     // Show login modal
     showLoginModal() {
         document.getElementById('login-modal').style.display = 'block';
-        document.getElementById('app').style.display = 'none';
+        document.getElementById('admin-dashboard').style.display = 'none';
     },
 
     // Show main app
     showApp() {
         document.getElementById('login-modal').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
+        document.getElementById('admin-dashboard').style.display = 'block';
     },
 
     // Load admin information
@@ -155,7 +192,10 @@ const AdminApp = {
                     email: payload.email
                 };
                 
-                document.getElementById('admin-email-display').textContent = this.state.admin.email;
+                const adminEmailDisplay = document.getElementById('admin-email-display');
+                if (adminEmailDisplay) {
+                    adminEmailDisplay.textContent = this.state.admin.email;
+                }
             } catch (error) {
                 console.error('Error parsing admin token:', error);
                 this.handleLogout();
@@ -182,6 +222,8 @@ const AdminApp = {
     // Load tenants
     async loadTenants() {
         const tenantList = document.getElementById('tenant-list');
+        if (!tenantList) return;
+        
         tenantList.innerHTML = '<div class="loading">Loading tenants...</div>';
         
         try {
@@ -262,16 +304,28 @@ const AdminApp = {
         const premiumTenants = this.state.tenants.filter(t => t.tier === 'premium').length;
         const activeTenants = this.state.tenants.filter(t => t.status === 'active').length;
         
-        document.getElementById('total-tenants').textContent = totalTenants;
-        document.getElementById('basic-tenants').textContent = basicTenants;
-        document.getElementById('premium-tenants').textContent = premiumTenants;
-        document.getElementById('active-tenants').textContent = activeTenants;
+        const totalTenantsEl = document.getElementById('total-tenants');
+        const basicTenantsEl = document.getElementById('basic-tenants');
+        const premiumTenantsEl = document.getElementById('premium-tenants');
+        const activeTenantsEl = document.getElementById('active-tenants');
+        
+        if (totalTenantsEl) totalTenantsEl.textContent = totalTenants;
+        if (basicTenantsEl) basicTenantsEl.textContent = basicTenants;
+        if (premiumTenantsEl) premiumTenantsEl.textContent = premiumTenants;
+        if (activeTenantsEl) activeTenantsEl.textContent = activeTenants;
     },
 
     // Show add tenant modal
     showAddTenantModal() {
-        document.getElementById('tenant-form').reset();
-        document.getElementById('tenant-modal').style.display = 'block';
+        const tenantForm = document.getElementById('tenant-form');
+        const tenantModal = document.getElementById('tenant-modal');
+        
+        if (tenantForm) {
+            tenantForm.reset();
+        }
+        if (tenantModal) {
+            tenantModal.style.display = 'flex';
+        }
     },
 
     // Close tenant modal
@@ -450,5 +504,6 @@ const AdminApp = {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    window.AdminApp = AdminApp; // Expose AdminApp globally
     AdminApp.init();
 });

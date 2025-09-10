@@ -1,11 +1,35 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agentic Insights - Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
     
-    <!-- Tailwind CSS -->
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>Admin Login</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="admin-email">Admin Email</label>
+                    <input type="email" id="admin-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="login-btn">Login</button>
+                </div>
+            </form>
+            <div id="login-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Scripts (moved outside hidden div) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,78 +44,70 @@
             }
         }
     </script>
-    
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- GSAP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
-    
-    <!-- Login Modal -->
-    <div id="login-modal" class="modal fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg p-6 w-96">
-            <h2 class="text-2xl font-bold mb-4">Admin Login</h2>
-            <form id="login-form">
-                <div class="form-group mb-4">
-                    <label for="admin-email" class="block text-sm font-medium mb-2">Admin Email</label>
-                    <input type="email" id="admin-email" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none">
-                </div>
-                <div class="form-group mb-4">
-                    <label for="admin-password" class="block text-sm font-medium mb-2">Password</label>
-                    <input type="password" id="admin-password" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none">
-                </div>
-                <div class="form-actions">
-                    <button type="submit" id="login-btn" class="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg transition-all">Login</button>
-                </div>
-            </form>
-            <div id="login-error" class="error-message mt-4 text-red-400" style="display: none;"></div>
+
+    <!-- Admin Dashboard (Modern UI starts here) -->
+    <div id="admin-dashboard" class="admin-dashboard" style="display: none;">
+        <div class="dark bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
+            <!-- Main Application -->
+            <div id="app" class="flex h-screen">
+                
+                <!-- Left Sidebar Navigation -->
+                <nav id="sidebar" class="w-64 bg-gray-800/50 backdrop-blur-sm border-r border-gray-700/50">
+                    <div class="p-6">
+                        <h2 class="text-xl font-bold text-white mb-8">🔧 SaaS Admin</h2>
+                        
+                        <!-- Navigation Menu -->
+                        <ul class="space-y-2" id="nav-menu">
+                            <li>
+                                <a href="#" data-page="dashboard" class="nav-item active flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
+                                    <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                                    </svg>
+                                    Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" data-page="tenants" class="nav-item flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
+                                    <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Tenant Management
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" data-page="cost-analysis" class="nav-item flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
+                                    <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Cost Analysis
+                                    <span class="ml-auto bg-gradient-to-r from-purple-500 to-blue-500 text-xs px-2 py-1 rounded-full">AI</span>
+                                </a>
+                            </li>
+                        </ul>
+                        
+                        <!-- Logout Button -->
+                        <div class="mt-8 pt-8 border-t border-gray-700/50">
+                            <button id="logout-btn" class="w-full flex items-center p-3 rounded-lg hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-all">
+                                <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"></path>
+                                </svg>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+                
+                <!-- Main Content Area -->
+                <main class="flex-1 overflow-auto">
+                    <div id="page-content" class="p-8">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </main>
+            </div>
         </div>
     </div>
-
-    <!-- Main Application -->
-    <div id="app" class="flex h-screen" style="display: none;">
-        
-        <!-- Left Sidebar Navigation -->
-        <nav id="sidebar" class="w-64 bg-gray-800/50 backdrop-blur-sm border-r border-gray-700/50">
-            <div class="p-6">
-                <h2 class="text-xl font-bold text-white mb-8">🔧 SaaS Admin</h2>
-                
-                <!-- Navigation Menu -->
-                <ul class="space-y-2" id="nav-menu">
-                    <li>
-                        <a href="#" data-page="dashboard" class="nav-item active flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
-                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
-                            </svg>
-                            Dashboard
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-page="tenants" class="nav-item flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
-                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Tenant Management
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-page="cost-analysis" class="nav-item flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
-                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Cost Analysis
-                            <span class="ml-auto bg-gradient-to-r from-purple-500 to-blue-500 text-xs px-2 py-1 rounded-full">AI</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </nav>
-        
-        <!-- Main Content Area -->
         <main class="flex-1 overflow-auto">
             <div id="page-content" class="p-8">
                 <!-- Dynamic content loaded here -->

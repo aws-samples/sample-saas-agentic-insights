@@ -4,6 +4,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 
 interface MetricsFrameworkStackProps extends cdk.StackProps {
@@ -98,7 +99,7 @@ export class MetricsFrameworkStack extends cdk.Stack {
 
     // DynamoDB Stream trigger for aggregation
     metricsAggregatorService.addEventSource(
-      new lambda.DynamoEventSource(this.metricsTable, {
+      new DynamoEventSource(this.metricsTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 10,
         retryAttempts: 3,

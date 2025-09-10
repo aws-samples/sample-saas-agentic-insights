@@ -23,12 +23,19 @@ class NavigationController {
             });
         });
         
-        // Load initial page
-        this.navigateToPage('dashboard');
+        // Don't load initial page here - let AdminApp control when to load it
+        // this.navigateToPage('dashboard');
     }
     
     navigateToPage(page) {
         if (this.currentPage === page) return;
+        
+        // Check if page-content exists before proceeding
+        const pageContent = document.getElementById('page-content');
+        if (!pageContent) {
+            console.warn('page-content element not found, deferring navigation');
+            return;
+        }
         
         // Update active navigation item
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -81,10 +88,17 @@ class NavigationController {
             </div>
         `;
         
-        this.updatePageContent(content);
-        // Load dashboard data
-        if (window.loadTenants) {
-            window.loadTenants();
+        const pageContent = document.getElementById('page-content');
+        if (!pageContent) {
+            console.error('page-content element not found');
+            return;
+        }
+        
+        pageContent.innerHTML = content;
+        
+        // Load dashboard data after content is set
+        if (window.AdminApp) {
+            window.AdminApp.loadDashboard();
         }
     }
     
@@ -102,15 +116,115 @@ class NavigationController {
                 </div>
                 
                 <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                    <div id="tenants-container">Loading tenants...</div>
+                    <div id="tenant-list">Loading tenants...</div>
+                </div>
+                
+                <!-- Add Tenant Modal -->
+                <div id="tenant-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" style="display: none;">
+                    <div class="bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4">
+                        <h3 class="text-xl font-bold text-white mb-4">Add New Tenant</h3>
+                        <form id="tenant-form">
+                            <div class="mb-4">
+                                <label for="tenant-name" class="block text-sm font-medium text-gray-300 mb-2">Company Name</label>
+                                <input type="text" id="tenant-name" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white">
+                            </div>
+                            <div class="mb-4">
+                                <label for="tenant-email" class="block text-sm font-medium text-gray-300 mb-2">Admin Email</label>
+                                <input type="email" id="tenant-email" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white">
+                            </div>
+                            <div class="mb-4">
+                                <label for="tenant-tier" class="block text-sm font-medium text-gray-300 mb-2">Tier</label>
+                                <select id="tenant-tier" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white">
+                                    <option value="">Select Tier</option>
+                                    <option value="basic">Basic ($29/month)</option>
+                                    <option value="premium">Premium ($99/month)</option>
+                                </select>
+                            </div>
+                            <div id="tenant-error" class="text-red-400 text-sm mb-4" style="display: none;"></div>
+                            <div class="flex gap-3">
+                                <button type="submit" id="save-tenant-btn" class="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 p-3 rounded-lg transition-all text-white">
+                                    Create Tenant
+                                </button>
+                                <button type="button" id="cancel-tenant-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 p-3 rounded-lg transition-all text-white">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Tenant Details Modal -->
+                <div id="tenant-details-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" style="display: none;">
+                    <div class="flex items-center justify-center min-h-screen p-4">
+                        <div class="bg-gray-800 rounded-lg p-6 w-96 max-w-md">
+                            <h3 class="text-xl font-bold text-white mb-4">Tenant Details</h3>
+                            <div id="tenant-details-content" class="space-y-3 text-gray-300">
+                                <!-- Content populated by JavaScript -->
+                            </div>
+                            <div class="mt-6">
+                                <button type="button" class="close-btn w-full bg-gray-600 hover:bg-gray-700 p-3 rounded-lg transition-all text-white">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         
-        this.updatePageContent(content);
-        // Load existing tenant management functionality
-        if (window.loadTenants) {
-            window.loadTenants();
+        const pageContent = document.getElementById('page-content');
+        if (!pageContent) {
+            console.error('page-content element not found');
+            return;
+        }
+        
+        pageContent.innerHTML = content;
+        
+        // Load tenant data and attach event listeners
+        if (window.AdminApp) {
+            window.AdminApp.loadTenants();
+            
+            // Re-attach event listeners for tenant functionality
+            setTimeout(() => {
+                const addTenantBtn = document.getElementById('add-tenant-btn');
+                const tenantForm = document.getElementById('tenant-form');
+                const cancelTenantBtn = document.getElementById('cancel-tenant-btn');
+                
+                if (addTenantBtn) {
+                    addTenantBtn.addEventListener('click', window.AdminApp.showAddTenantModal.bind(window.AdminApp));
+                }
+                if (tenantForm) {
+                    tenantForm.addEventListener('submit', window.AdminApp.handleTenantSubmit.bind(window.AdminApp));
+                }
+                if (cancelTenantBtn) {
+                    cancelTenantBtn.addEventListener('click', window.AdminApp.closeTenantModal.bind(window.AdminApp));
+                }
+                
+                // Add event listeners for view and delete buttons
+                document.querySelectorAll('.view-tenant-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tenantId = e.target.getAttribute('data-tenant-id');
+                        window.AdminApp.showTenantDetails(tenantId);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-tenant-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tenantId = e.target.getAttribute('data-tenant-id');
+                        window.AdminApp.deleteTenant(tenantId);
+                    });
+                });
+                
+                // Add close button listener for tenant details modal
+                document.querySelectorAll('.close-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const modal = e.target.closest('.modal, #tenant-details-modal');
+                        if (modal) {
+                            modal.style.display = 'none';
+                        }
+                    });
+                });
+            }, 100);
         }
     }
     
@@ -179,7 +293,7 @@ class NavigationController {
     }
 }
 
-// Initialize navigation when DOM is loaded
+// Initialize navigation when DOM is loaded (but don't load initial page)
 document.addEventListener('DOMContentLoaded', () => {
     window.navigationController = new NavigationController();
 });

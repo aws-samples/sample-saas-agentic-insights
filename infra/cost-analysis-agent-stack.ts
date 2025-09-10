@@ -137,10 +137,24 @@ export class CostAnalysisAgentStack extends cdk.Stack {
                 '/calculate-usage': {
                   post: {
                     description: 'Calculate infrastructure usage for tenants',
-                    parameters: [
-                      { name: 'tenant_ids', in: 'query', required: true, schema: { type: 'array', items: { type: 'string' } } },
-                      { name: 'time_period', in: 'query', required: true, schema: { type: 'string' } }
-                    ]
+                    requestBody: {
+                      required: true,
+                      content: {
+                        'application/json': {
+                          schema: {
+                            type: 'object',
+                            properties: {
+                              tenant_ids: { type: 'array', items: { type: 'string' } },
+                              time_period: { type: 'string' }
+                            },
+                            required: ['tenant_ids', 'time_period']
+                          }
+                        }
+                      }
+                    },
+                    responses: {
+                      '200': { description: 'Success' }
+                    }
                   }
                 }
               }
@@ -159,9 +173,23 @@ export class CostAnalysisAgentStack extends cdk.Stack {
                 '/analyze-costs': {
                   post: {
                     description: 'Analyze costs per tenant',
-                    parameters: [
-                      { name: 'tenant_ids', in: 'query', required: true, schema: { type: 'array', items: { type: 'string' } } }
-                    ]
+                    requestBody: {
+                      required: true,
+                      content: {
+                        'application/json': {
+                          schema: {
+                            type: 'object',
+                            properties: {
+                              tenant_ids: { type: 'array', items: { type: 'string' } }
+                            },
+                            required: ['tenant_ids']
+                          }
+                        }
+                      }
+                    },
+                    responses: {
+                      '200': { description: 'Success' }
+                    }
                   }
                 }
               }
@@ -180,10 +208,24 @@ export class CostAnalysisAgentStack extends cdk.Stack {
                 '/predict-costs': {
                   post: {
                     description: 'Predict future costs',
-                    parameters: [
-                      { name: 'tenant_ids', in: 'query', required: true, schema: { type: 'array', items: { type: 'string' } } },
-                      { name: 'forecast_months', in: 'query', required: true, schema: { type: 'integer' } }
-                    ]
+                    requestBody: {
+                      required: true,
+                      content: {
+                        'application/json': {
+                          schema: {
+                            type: 'object',
+                            properties: {
+                              tenant_ids: { type: 'array', items: { type: 'string' } },
+                              forecast_months: { type: 'integer' }
+                            },
+                            required: ['tenant_ids', 'forecast_months']
+                          }
+                        }
+                      }
+                    },
+                    responses: {
+                      '200': { description: 'Success' }
+                    }
                   }
                 }
               }
