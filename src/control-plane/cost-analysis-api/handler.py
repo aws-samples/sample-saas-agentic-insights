@@ -17,40 +17,35 @@ def handler(event, context):
         if event['httpMethod'] == 'OPTIONS':
             return {'statusCode': 200, 'headers': cors_headers, 'body': ''}
         
-        # Extract tenant context from authorizer
-        request_context = event.get('requestContext', {})
-        authorizer_context = request_context.get('authorizer', {})
-        tenant_id = authorizer_context.get('tenant_id')
+        # Platform-wide cost analysis for SaaS admin
+        # No tenant context needed - analyze across all tenants
         
-        if not tenant_id:
-            return {
-                'statusCode': 403,
-                'headers': cors_headers,
-                'body': json.dumps({'error': 'Missing tenant context'})
-            }
-        
-        # Parse request body
-        body = json.loads(event['body']) if event.get('body') else {}
-        analysis_type = body.get('analysis_type', 'overview')
+        # Parse request body for POST, use default for GET
+        if event['httpMethod'] == 'POST':
+            body = json.loads(event['body']) if event.get('body') else {}
+            analysis_type = body.get('analysis_type', 'overview')
+        else:
+            # GET method - default to predictions for dashboard
+            analysis_type = 'predictions'
         
         # Invoke Bedrock Agent
         bedrock_agent = boto3.client('bedrock-agent-runtime')
         
-        # Create prompt based on analysis type
+        # Create platform-wide prompts for SaaS admin analysis
         if analysis_type == 'overview':
-            prompt = f"Analyze infrastructure usage and costs for tenant {tenant_id} for the last 30 days. Provide platform totals and service breakdown."
+            prompt = "Analyze infrastructure usage and costs across all tenants for the last 30 days. Provide platform totals and service breakdown."
         elif analysis_type == 'tenant_analysis':
-            prompt = f"Analyze cost per tenant including profitability for tenant {tenant_id}. Compare with tier pricing."
+            prompt = "Analyze cost per tenant including profitability across all tiers. Compare with tier pricing and identify optimization opportunities."
         elif analysis_type == 'predictions':
-            prompt = f"Predict costs for tenant {tenant_id} for the next 3 months based on current usage patterns."
+            prompt = "Predict platform costs for the next 3 months based on current usage patterns across all tenants. Include growth projections and cost optimization recommendations."
         else:
-            prompt = f"Provide comprehensive cost analysis for tenant {tenant_id}"
+            prompt = "Provide comprehensive platform-wide cost analysis across all tenants and services"
         
-        # Invoke agent
+        # Invoke agent with platform session
         response = bedrock_agent.invoke_agent(
             agentId=os.environ['BEDROCK_AGENT_ID'],
             agentAliasId=os.environ['BEDROCK_AGENT_ALIAS_ID'],
-            sessionId=f"session-{tenant_id}",
+            sessionId=f"platform-admin-session",
             inputText=prompt
         )
         
@@ -67,7 +62,6 @@ def handler(event, context):
             'headers': cors_headers,
             'body': json.dumps({
                 'analysis': result_text,
-                'tenant_id': tenant_id,
                 'analysis_type': analysis_type,
                 'timestamp': context.aws_request_id
             })

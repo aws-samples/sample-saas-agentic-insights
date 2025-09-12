@@ -10,6 +10,7 @@ import { Construct } from 'constructs';
 
 export class ControlPlaneStack extends cdk.Stack {
   public readonly eventBus: events.EventBus;
+  public readonly controlPlaneApi: apigateway.RestApi;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -141,7 +142,7 @@ export class ControlPlaneStack extends cdk.Stack {
     }));
 
     // API Gateway for Control Plane
-    const controlPlaneApi = new apigateway.RestApi(this, 'ControlPlaneApi', {
+    this.controlPlaneApi = new apigateway.RestApi(this, 'ControlPlaneApi', {
       restApiName: 'Agentic Insights Control Plane API',
       description: 'API for tenant management and authentication',
       defaultCorsPreflightOptions: {
@@ -157,10 +158,10 @@ export class ControlPlaneStack extends cdk.Stack {
     const tenantManagementIntegration = new apigateway.LambdaIntegration(tenantManagementFunction);
 
     // API routes
-    controlPlaneApi.root.addResource('register').addMethod('POST', registrationIntegration);
-    controlPlaneApi.root.addResource('login').addMethod('POST', loginIntegration);
+    this.controlPlaneApi.root.addResource('register').addMethod('POST', registrationIntegration);
+    this.controlPlaneApi.root.addResource('login').addMethod('POST', loginIntegration);
     
-    const tenantsResource = controlPlaneApi.root.addResource('tenants');
+    const tenantsResource = this.controlPlaneApi.root.addResource('tenants');
     tenantsResource.addMethod('GET', tenantManagementIntegration);
     tenantsResource.addMethod('POST', tenantManagementIntegration);
     tenantsResource.addResource('{tenant_id}').addMethod('DELETE', tenantManagementIntegration);
@@ -177,7 +178,7 @@ export class ControlPlaneStack extends cdk.Stack {
 
     // Outputs
     new cdk.CfnOutput(this, 'ControlPlaneApiUrl', {
-      value: controlPlaneApi.url,
+      value: this.controlPlaneApi.url,
       description: 'Control Plane API Gateway URL',
     });
 

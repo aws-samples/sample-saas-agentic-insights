@@ -58,9 +58,8 @@ const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsC
   },
   metricsTableName: metricsFrameworkStack.metricsTable.tableName,
   metricsAggregationTableName: metricsFrameworkStack.metricsAggregationTable.tableName,
-  appPlaneApiId: appPlaneStack.appPlaneApi.restApiId,
-  appPlaneApiRootResourceId: appPlaneStack.appPlaneApi.root.resourceId,
-  authorizer: appPlaneStack.authorizer,
+  controlPlaneApiId: controlPlaneStack.controlPlaneApi.restApiId,
+  controlPlaneApiRootResourceId: controlPlaneStack.controlPlaneApi.root.resourceId,
 });
 
 // Add dependencies
@@ -69,4 +68,4 @@ appPlaneStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(metricsFrameworkStack);
 aiDescriptionStack.addDependency(appPlaneStack);
 costAnalysisAgentStack.addDependency(metricsFrameworkStack);
-costAnalysisAgentStack.addDependency(appPlaneStack);
+costAnalysisAgentStack.addDependency(controlPlaneStack);

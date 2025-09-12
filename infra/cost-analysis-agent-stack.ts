@@ -10,9 +10,8 @@ import { Construct } from 'constructs';
 interface CostAnalysisAgentStackProps extends cdk.StackProps {
   metricsTableName: string;
   metricsAggregationTableName: string;
-  appPlaneApiId: string;
-  appPlaneApiRootResourceId: string;
-  authorizer: apigateway.TokenAuthorizer;
+  controlPlaneApiId: string;
+  controlPlaneApiRootResourceId: string;
 }
 
 export class CostAnalysisAgentStack extends cdk.Stack {
@@ -68,6 +67,11 @@ export class CostAnalysisAgentStack extends cdk.Stack {
         METRICS_AGGREGATION_TABLE_NAME: props.metricsAggregationTableName,
       },
     });
+
+    // Grant Lambda permissions for action groups
+    infrastructureUsageFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
+    costAnalysisFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
+    costPredictionFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
 
     // Grant DynamoDB permissions
     const metricsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.metricsTableName}`;
@@ -257,21 +261,56 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     // Grant Bedrock permissions to API function
     costAnalysisApiFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ['bedrock-agent-runtime:InvokeAgent'],
-      resources: [this.costAnalysisAgent.attrAgentArn],
+      actions: [
+        'bedrock-agent-runtime:InvokeAgent',
+        'bedrock:InvokeAgent',
+        'bedrock:InvokeModel',
+      ],
+      resources: [
+        this.costAnalysisAgent.attrAgentArn,
+        `arn:aws:bedrock:${this.region}:${this.account}:agent-alias/${this.costAnalysisAgent.attrAgentId}/${this.costAnalysisAgentAlias.attrAgentAliasId}`,
+        `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
+      ],
     }));
 
-    // Get reference to existing API Gateway
-    const existingApi = apigateway.RestApi.fromRestApiAttributes(this, 'ExistingAppPlaneApi', {
-      restApiId: props.appPlaneApiId,
-      rootResourceId: props.appPlaneApiRootResourceId,
+    // Get reference to existing Control Plane API Gateway (not App Plane)
+    const existingApi = apigateway.RestApi.fromRestApiAttributes(this, 'ExistingControlPlaneApi', {
+      restApiId: props.controlPlaneApiId,
+      rootResourceId: props.controlPlaneApiRootResourceId,
     });
 
-    // Create cost-analysis resource
+    // Create cost-analysis resource in Control Plane API
     const costAnalysisResource = existingApi.root.addResource('cost-analysis');
-    costAnalysisResource.addMethod('POST', new apigateway.LambdaIntegration(costAnalysisApiFunction), {
-      authorizer: props.authorizer,
+    
+    // Add OPTIONS method for CORS
+    costAnalysisResource.addMethod('OPTIONS', new apigateway.MockIntegration({
+      integrationResponses: [{
+        statusCode: '200',
+        responseParameters: {
+          'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+          'method.response.header.Access-Control-Allow-Origin': "'*'",
+          'method.response.header.Access-Control-Allow-Methods': "'GET,POST,OPTIONS'"
+        }
+      }],
+      requestTemplates: {
+        'application/json': '{"statusCode": 200}'
+      }
+    }), {
+      methodResponses: [{
+        statusCode: '200',
+        responseParameters: {
+          'method.response.header.Access-Control-Allow-Headers': true,
+          'method.response.header.Access-Control-Allow-Origin': true,
+          'method.response.header.Access-Control-Allow-Methods': true
+        }
+      }]
     });
+    
+    // Add GET method for dashboard data retrieval (primary method)
+    costAnalysisResource.addMethod('GET', new apigateway.LambdaIntegration(costAnalysisApiFunction));
+    
+    // Add POST method for analysis requests (secondary method)
+    costAnalysisResource.addMethod('POST', new apigateway.LambdaIntegration(costAnalysisApiFunction));
 
     // Outputs
     new cdk.CfnOutput(this, 'CostAnalysisAgentId', {
@@ -285,7 +324,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'CostAnalysisApiUrl', {
-      value: `https://${props.appPlaneApiId}.execute-api.${this.region}.amazonaws.com/prod/cost-analysis`,
+      value: `https://${props.controlPlaneApiId}.execute-api.${this.region}.amazonaws.com/prod/cost-analysis`,
       description: 'Cost Analysis API endpoint',
     });
   }
