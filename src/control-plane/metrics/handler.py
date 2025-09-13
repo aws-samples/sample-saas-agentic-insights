@@ -3,6 +3,18 @@ import boto3
 import os
 import uuid
 from datetime import datetime
+from decimal import Decimal
+
+def convert_floats_to_decimal(obj):
+    """Recursively convert float values to Decimal for DynamoDB compatibility"""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: convert_floats_to_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimal(item) for item in obj]
+    else:
+        return obj
 
 def handler(event, context):
     """Process metrics events from EventBridge and store in DynamoDB"""
@@ -35,8 +47,8 @@ def handler(event, context):
                 'event_type': detail['event_type'],
                 'timestamp': detail['timestamp'],
                 'user_id': detail.get('user_id'),
-                'metadata': detail.get('metadata', {}),
-                'performance': detail.get('performance', {}),
+                'metadata': convert_floats_to_decimal(detail.get('metadata', {})),
+                'performance': convert_floats_to_decimal(detail.get('performance', {})),
                 'ttl': ttl_timestamp
             }
             

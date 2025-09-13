@@ -36,24 +36,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     start_time = time.time()
     
-    logger.info(json.dumps({
-        "event": "order_request_started",
-        "raw_event": event
-    }))
-    
     try:
         http_method = event['httpMethod']
         
-        logger.info(json.dumps({
-            "event": "http_method_extracted",
-            "http_method": http_method
-        }))
-        
         # Handle OPTIONS preflight requests
         if http_method == 'OPTIONS':
-            logger.info(json.dumps({
-                "event": "options_request_handled"
-            }))
             return {
                 'statusCode': 200,
                 'headers': cors_headers,
@@ -72,14 +59,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if METRICS_ENABLED and tenant_id and tier:
             metrics = MetricsCollector("order-service", tenant_id, tier)
         
-        logger.info(json.dumps({
-            "event": "tenant_context_extracted",
-            "tenant_id": tenant_id,
-            "tier": tier,
-            "user_id": user_id,
-            "full_authorizer_context": authorizer_context
-        }))
-        
+        # Validate tenant context - Important for security
         if not tenant_id:
             logger.error(json.dumps({
                 "event": "missing_tenant_context",
@@ -92,11 +72,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
         
         # Determine which table to use based on tier
-        logger.info(json.dumps({
-            "event": "determining_table_name",
-            "tenant_id": tenant_id,
-            "tier": tier
-        }))
         
         table_name = get_order_table_name(tenant_id, tier)
         
@@ -111,10 +86,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif http_method == 'POST':
             result = create_order(event, tenant_id, user_id, table_name, metrics)
         else:
-            logger.warning(json.dumps({
-                "event": "method_not_allowed",
-                "http_method": http_method
-            }))
+            logger.warning(f"Method not allowed: {http_method}")
             result = {
                 'statusCode': 405,
                 'headers': cors_headers,
@@ -184,26 +156,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 def get_order_table_name(tenant_id: str, tier: str) -> str:
     """Get the appropriate order table name based on tier"""
-    logger.info(json.dumps({
-        "event": "get_order_table_name_started",
-        "tenant_id": tenant_id,
-        "tier": tier
-    }))
     
     if tier == 'premium':
-        logger.info(json.dumps({
-            "event": "premium_tier_detected",
-            "tenant_id": tenant_id
-        }))
-        
         # For Premium tenants we need to have a dedicated table, which has been created during onboarding
         try:
             tenants_table = dynamodb.Table('Tenants')
-            
-            logger.info(json.dumps({
-                "event": "querying_tenants_table",
-                "tenant_id": tenant_id
-            }))
             
             response = tenants_table.get_item(Key={'tenant_id': tenant_id})
             
@@ -256,12 +213,6 @@ def list_orders(tenant_id: str, table_name: str, metrics=None) -> Dict[str, Any]
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
     
-    logger.info(json.dumps({
-        "event": "list_orders_started",
-        "tenant_id": tenant_id,
-        "table_name": table_name
-    }))
-    
     try:
         table = dynamodb.Table(table_name)
         
@@ -284,12 +235,6 @@ def list_orders(tenant_id: str, table_name: str, metrics=None) -> Dict[str, Any]
                 operation="Query",
                 consumed_rcu=len(response['Items']) * 0.5  # Estimate RCU consumption
             )
-        
-        logger.info(json.dumps({
-            "event": "orders_query_completed",
-            "tenant_id": tenant_id,
-            "items_count": len(response['Items'])
-        }))
         
         orders = []
         for item in response['Items']:
@@ -343,13 +288,13 @@ def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name
     try:
         body = json.loads(event['body']) if isinstance(event.get('body'), str) else event.get('body', {})
         
-        # Validate required fields
-        if not body.get('items') or not isinstance(body['items'], list):
-            return {
-                'statusCode': 400,
-                'headers': cors_headers,
-                'body': json.dumps({'error': 'Items array is required'})
-            }
+        # # Validate required fields
+        # if not body.get('items') or not isinstance(body['items'], list):
+        #     return {
+        #         'statusCode': 400,
+        #         'headers': cors_headers,
+        #         'body': json.dumps({'error': 'Items array is required'})
+        #     }
         
         if len(body['items']) == 0:
             return {
@@ -358,12 +303,10 @@ def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name
                 'body': json.dumps({'error': 'Order must contain at least one item'})
             }
         
-        # Validate and process items
         processed_items = []
         total_amount = Decimal('0')
         
         for item in body['items']:
-            # Validate item fields
             required_item_fields = ['product_id', 'product_name', 'price', 'quantity']
             for field in required_item_fields:
                 if field not in item:
@@ -436,11 +379,8 @@ def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name
                 'price': float(item['price']),
                 'quantity': item['quantity']
             })
-        
-        return {
-            'statusCode': 201,
-            'headers': cors_headers,
-            'body': json.dumps({
+
+        body = json.dumps({
                 'message': 'Order created successfully',
                 'order_id': order_id,
                 'order': {
@@ -450,15 +390,20 @@ def create_order(event: Dict[str, Any], tenant_id: str, user_id: str, table_name
                     'status': 'completed',
                     'created_at': order_item['created_at']
                 }
-            })
+            })    
+        
+        logger.info(json.dumps({
+            "event": "tenants_table_response",
+            "tenant_id": tenant_id,
+            "order saved": body
+        }))
+
+        return {
+            'statusCode': 201,
+            'headers': cors_headers,
+            'body': body
         }
         
-    except json.JSONDecodeError:
-        return {
-            'statusCode': 400,
-            'headers': cors_headers,
-            'body': json.dumps({'error': 'Invalid JSON in request body'})
-        }
     except Exception as e:
         print(f"Create order error: {str(e)}")
         return {
