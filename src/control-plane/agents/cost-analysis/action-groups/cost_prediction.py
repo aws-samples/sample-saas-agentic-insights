@@ -9,29 +9,43 @@ def handler(event, context):
     """Action Group Lambda for cost prediction"""
     
     try:
-        parameters = event.get('parameters', [])
-        param_dict = {param['name']: param['value'] for param in parameters}
+        # Parse request body (Bedrock Agent format)
+        request_body = event.get('requestBody', {})
+        if isinstance(request_body, str):
+            request_body = json.loads(request_body)
         
-        tenant_ids = param_dict.get('tenant_ids', '').split(',')
-        forecast_months = int(param_dict.get('forecast_months', 3))
+        tenant_ids = request_body.get('tenant_ids', ['all'])
+        forecast_months = request_body.get('forecast_months', 3)
         
         prediction_data = predict_tenant_costs(tenant_ids, forecast_months)
         
         return {
-            'statusCode': 200,
-            'body': {
-                'application/json': {
-                    'body': json.dumps(prediction_data, default=decimal_serializer)
+            "messageVersion": "1.0",
+            "response": {
+                "actionGroup": "cost-prediction",
+                "apiPath": "/predict-costs",
+                "httpMethod": "POST",
+                "httpStatusCode": 200,
+                "responseBody": {
+                    "application/json": {
+                        "body": json.dumps(prediction_data, default=decimal_serializer)
+                    }
                 }
             }
         }
         
     except Exception as e:
         return {
-            'statusCode': 500,
-            'body': {
-                'application/json': {
-                    'body': json.dumps({'error': str(e)})
+            "messageVersion": "1.0",
+            "response": {
+                "actionGroup": "cost-prediction",
+                "apiPath": "/predict-costs",
+                "httpMethod": "POST",
+                "httpStatusCode": 500,
+                "responseBody": {
+                    "application/json": {
+                        "body": json.dumps({'error': str(e), 'error_type': 'processing_error'})
+                    }
                 }
             }
         }

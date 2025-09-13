@@ -76,12 +76,19 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     // Grant DynamoDB permissions
     const metricsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.metricsTableName}`;
     const metricsAggTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.metricsAggregationTableName}`;
+    const tenantsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/Tenants`;
 
     [infrastructureUsageFunction, costAnalysisFunction, costPredictionFunction].forEach(fn => {
       fn.addToRolePolicy(new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:Scan'],
-        resources: [metricsTableArn, metricsAggTableArn, `${metricsTableArn}/index/*`, `${metricsAggTableArn}/index/*`],
+        resources: [
+          metricsTableArn, 
+          metricsAggTableArn, 
+          tenantsTableArn,
+          `${metricsTableArn}/index/*`, 
+          `${metricsAggTableArn}/index/*`
+        ],
       }));
     });
 
