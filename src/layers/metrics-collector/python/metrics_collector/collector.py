@@ -33,8 +33,9 @@ class MetricsCollector:
             "endpoint": endpoint,
             "method": method,
             "status_code": status_code,
+            "response_time_ms": response_time_ms,
             "estimated_cost": cost
-        }, user_id, {"response_time_ms": response_time_ms})
+        }, user_id)
     
     def track_lambda_execution(self, function_name: str, memory_mb: int, duration_ms: float):
         """Track Lambda execution with cost calculation"""
@@ -97,7 +98,7 @@ class MetricsCollector:
         })
     
     def _publish_event(self, event_type: str, metadata: Dict[str, Any],
-                      user_id: Optional[str] = None, performance: Optional[Dict] = None):
+                      user_id: Optional[str] = None):
         """Internal method to publish events to EventBridge"""
         try:
             event_detail = {
@@ -107,8 +108,7 @@ class MetricsCollector:
                 "event_type": event_type,
                 "timestamp": datetime.now().isoformat(),
                 "user_id": user_id,
-                "metadata": metadata,
-                "performance": performance or {}
+                "metadata": metadata
             }
             
             self.eventbridge.put_events(

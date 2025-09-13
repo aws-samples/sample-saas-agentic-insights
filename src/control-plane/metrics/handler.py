@@ -48,7 +48,6 @@ def handler(event, context):
                 'timestamp': detail['timestamp'],
                 'user_id': detail.get('user_id'),
                 'metadata': convert_floats_to_decimal(detail.get('metadata', {})),
-                'performance': convert_floats_to_decimal(detail.get('performance', {})),
                 'ttl': ttl_timestamp
             }
             
