@@ -160,6 +160,47 @@ if [ -n "$COST_ANALYSIS_AGENT_ID" ]; then
     fi
 fi
 
+# Update admin panel configuration with Cost Analysis API URL
+if [ -n "$COST_ANALYSIS_API" ]; then
+    print_status "Updating admin panel configuration with Cost Analysis API..."
+    
+    # Get existing config values
+    CONTROL_PLANE_API=${CONTROL_PLANE_API%/}
+    APP_PLANE_API=${APP_PLANE_API%/}
+    
+    SAAS_APP_URL=$(aws cloudformation describe-stacks \
+        --stack-name AgenticInsightsAppPlane \
+        --query 'Stacks[0].Outputs[?OutputKey==`SaasAppUrl`].OutputValue' \
+        --output text 2>/dev/null || echo "")
+    
+    LANDING_PAGE_URL=$(aws cloudformation describe-stacks \
+        --stack-name AgenticInsightsAppPlane \
+        --query 'Stacks[0].Outputs[?OutputKey==`LandingPageUrl`].OutputValue' \
+        --output text 2>/dev/null || echo "")
+    
+    # Generate updated config content
+    config_content="// Auto-generated configuration file
+// This file is generated during deployment and should not be edited manually
+window.APP_CONFIG = {
+    CONTROL_PLANE_API_URL: '$CONTROL_PLANE_API',
+    APP_PLANE_API_URL: '$APP_PLANE_API',
+    SAAS_APP_URL: '$SAAS_APP_URL',
+    ADMIN_PANEL_URL: '$ADMIN_PANEL_URL',
+    LANDING_PAGE_URL: '$LANDING_PAGE_URL',
+    COST_ANALYSIS_API_URL: '$COST_ANALYSIS_API',
+    REGION: '$AWS_REGION'
+};"
+    
+    # Update admin panel config
+    echo "$config_content" > web/admin-panel/config.js
+    
+    # Deploy updated admin panel
+    print_status "Deploying updated admin panel with Cost Analysis integration..."
+    cdk deploy AgenticInsightsAppPlane --require-approval never
+    
+    print_success "Admin panel configuration updated with Cost Analysis API"
+fi
+
 # Display deployment summary
 echo
 echo "=================================================================="
@@ -174,7 +215,7 @@ echo
 echo "🔗 Application URLs:"
 if [ -n "$ADMIN_PANEL_URL" ]; then
     echo "Enhanced Admin Panel: $ADMIN_PANEL_URL"
-    echo "  └── Cost Analysis Tab: Available with AI badge"
+    echo "  └── Cost Analysis Tab: Available with AI-powered insights"
 fi
 echo
 echo "🔧 API Endpoints:"
@@ -183,6 +224,7 @@ if [ -n "$APP_PLANE_API" ]; then
 fi
 if [ -n "$COST_ANALYSIS_API" ]; then
     echo "Cost Analysis API: $COST_ANALYSIS_API"
+    echo "  └── Integrated into Admin Panel configuration"
 fi
 echo
 echo "🤖 AI Resources:"
