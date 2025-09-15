@@ -158,6 +158,7 @@ class CostAnalysisController {
             
             const result = await response.json();
             console.log('📊 API Response data:', result);
+            console.log('📝 Analysis text:', result.analysis);
             
             // Parse AI response and extract structured data
             this.data = this.parseAIResponse(result.analysis);

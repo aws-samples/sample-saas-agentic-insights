@@ -1,3 +1,19 @@
+"""
+COST ANALYSIS ACTION GROUP
+Purpose: Per-tenant detailed profitability analysis
+
+Extracts:
+├── Individual tenant costs (tenant-by-tenant breakdown)
+├── Tenant tier information (basic vs premium)
+├── Revenue calculations per tenant ($29 vs $99)
+├── Profit margins per tenant
+└── Tenant names and IDs
+
+Returns data for AI agent sections:
+- === TENANT ANALYSIS === (TenantID | TierName | MonthlyCost | MonthlyRevenue | Margin)
+- Platform margin calculation for === OVERVIEW METRICS ===
+"""
+
 import json
 import boto3
 import os
@@ -6,7 +22,7 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 
 def handler(event, context):
-    """Action Group Lambda for cost analysis per tenant"""
+    """Action Group Lambda for per-tenant cost analysis and profitability"""
     
     try:
         # Parse request body (Bedrock Agent format)
@@ -50,127 +66,113 @@ def handler(event, context):
         }
 
 def analyze_tenant_costs(tenant_ids):
-    """Analyze costs for each tenant with real data"""
+    """Analyze costs and profitability for each tenant individually"""
+    
+    print(f"DEBUG: Starting tenant analysis with tenant_ids: {tenant_ids}")
     
     tenant_analyses = []
     tenants_table = boto3.resource('dynamodb').Table('Tenants')
     aggregation_table = boto3.resource('dynamodb').Table(os.environ['METRICS_AGGREGATION_TABLE_NAME'])
     
-    pricing = {
-        'api_gateway_requests': 3.50e-6,
-        'lambda_gb_second': 0.0000166667,
-        'lambda_request': 2.0e-7,
-        'dynamodb_wcu': 1.25e-6,
-        'dynamodb_rcu': 0.25e-6,
-        'claude_haiku_input_token': 0.25e-6,
-        'claude_haiku_output_token': 1.25e-6,
-        's3_requests': 0.4e-3,
-        's3_storage_gb_month': 0.023,
-    }
-    
     # Get current month date range
     end_date = datetime.now().date()
-    start_date = end_date.replace(day=1)  # First day of current month
+    start_date = end_date.replace(day=1)
+    month_filter = start_date.strftime('%Y-%m')
+    
+    print(f"DEBUG: Filtering by month: {month_filter}")
+    
+    # Get all tenants if 'all' specified
+    if tenant_ids == ['all']:
+        response = tenants_table.scan()
+        tenant_ids = [item['tenant_id'] for item in response['Items']]
+        print(f"DEBUG: Found {len(tenant_ids)} tenants: {tenant_ids}")
+    
+    total_revenue = 0
+    total_cost = 0
     
     for tenant_id in tenant_ids:
         if not tenant_id.strip():
             continue
             
         try:
-            # Get tenant tier from Tenants table
+            print(f"DEBUG: Processing tenant: {tenant_id}")
+            
+            # Get tenant info from Tenants table
             tenant_response = tenants_table.get_item(Key={'tenant_id': tenant_id.strip()})
             if 'Item' not in tenant_response:
+                print(f"DEBUG: Tenant {tenant_id} not found in Tenants table")
                 continue
                 
             tenant_info = tenant_response['Item']
             tier = tenant_info.get('tier', 'basic')
             tenant_name = tenant_info.get('tenant_name', tenant_id)
             
-            # Calculate total cost for this tenant
-            total_cost = 0
-            current_date = start_date
+            print(f"DEBUG: Tenant {tenant_id} - {tenant_name} - {tier}")
             
-            while current_date <= end_date:
-                date_str = current_date.strftime('%Y-%m-%d')
-                
-                response = aggregation_table.query(
-                    KeyConditionExpression=Key('tenant_id').eq(tenant_id.strip()) & 
-                                         Key('metric_date_type').begins_with(date_str)
-                )
-                
-                for item in response['Items']:
-                    metric_name = item['metric_name']
-                    sum_value = float(item['sum'])
-                    
-                    if metric_name == 'api_gateway_requests':
-                        total_cost += sum_value * pricing['api_gateway_requests']
-                    elif metric_name == 'lambda_gb_seconds':
-                        total_cost += sum_value * pricing['lambda_gb_second']
-                    elif metric_name == 'lambda_requests':
-                        total_cost += sum_value * pricing['lambda_request']
-                    elif metric_name == 'dynamodb_rcu_consumed':
-                        total_cost += sum_value * pricing['dynamodb_rcu']
-                    elif metric_name == 'dynamodb_wcu_consumed':
-                        total_cost += sum_value * pricing['dynamodb_wcu']
-                    elif metric_name == 'bedrock_input_tokens':
-                        total_cost += sum_value * pricing['claude_haiku_input_token']
-                    elif metric_name == 'bedrock_output_tokens':
-                        total_cost += sum_value * pricing['claude_haiku_output_token']
-                    elif metric_name == 's3_requests':
-                        total_cost += sum_value * pricing['s3_requests'] / 1000
-                    elif metric_name == 's3_storage_gb_hours':
-                        total_cost += sum_value * pricing['s3_storage_gb_month'] / (30 * 24)
-                
-                current_date += timedelta(days=1)
+            # Calculate tenant cost from aggregated metrics
+            tenant_cost = 0
+            
+            # Query current month metrics for this tenant
+            response = aggregation_table.query(
+                KeyConditionExpression=Key('tenant_id').eq(tenant_id.strip()) & 
+                                     Key('metric_date_type').begins_with(month_filter)
+            )
+            
+            print(f"DEBUG: Found {len(response['Items'])} metrics for tenant {tenant_id}")
+            
+            for item in response['Items']:
+                # Use pre-calculated cost if available
+                if 'estimated_cost' in item:
+                    cost = float(item['estimated_cost'])
+                    tenant_cost += cost
+                    print(f"DEBUG: Added cost {cost} from {item['metric_name']}")
             
             # Calculate revenue and margin
             revenue = 29.00 if tier == 'basic' else 99.00
-            margin = revenue - total_cost
+            margin = revenue - tenant_cost
             margin_percentage = (margin / revenue * 100) if revenue > 0 else 0
             
-            analysis = {
-                'tenant_id': tenant_id.strip(),
+            print(f"DEBUG: Tenant {tenant_id} - Cost: {tenant_cost}, Revenue: {revenue}, Margin: {margin_percentage}%")
+            
+            tenant_analyses.append({
+                'tenant_id': tenant_id,
                 'tenant_name': tenant_name,
                 'tier': tier,
-                'total_cost': total_cost,
-                'revenue': revenue,
-                'margin': margin,
-                'margin_percentage': margin_percentage,
-                'status': 'profitable' if margin > 0 else 'loss_making'
-            }
+                'monthly_cost': round(tenant_cost, 2),
+                'monthly_revenue': revenue,
+                'margin': round(margin, 2),
+                'margin_percentage': round(margin_percentage, 1)
+            })
             
-            tenant_analyses.append(analysis)
+            total_revenue += revenue
+            total_cost += tenant_cost
             
         except Exception as e:
-            print(f"Error analyzing tenant {tenant_id}: {str(e)}")
+            print(f"ERROR analyzing tenant {tenant_id}: {str(e)}")
             continue
     
-    # Sort by cost descending
-    tenant_analyses.sort(key=lambda x: x['total_cost'], reverse=True)
+    # Calculate platform-wide margin
+    platform_margin = ((total_revenue - total_cost) / total_revenue * 100) if total_revenue > 0 else 0
     
-    # Calculate tier comparison
-    basic_tenants = [t for t in tenant_analyses if t['tier'] == 'basic']
-    premium_tenants = [t for t in tenant_analyses if t['tier'] == 'premium']
+    print(f"DEBUG: Final results - {len(tenant_analyses)} tenants analyzed")
     
     return {
         'tenant_analysis': tenant_analyses,
-        'tier_comparison': {
-            'basic_tier': {
-                'tenant_count': len(basic_tenants),
-                'avg_cost': sum(t['total_cost'] for t in basic_tenants) / max(len(basic_tenants), 1),
-                'avg_margin': sum(t['margin'] for t in basic_tenants) / max(len(basic_tenants), 1),
-                'total_profit_loss': sum(t['margin'] for t in basic_tenants)
-            },
-            'premium_tier': {
-                'tenant_count': len(premium_tenants),
-                'avg_cost': sum(t['total_cost'] for t in premium_tenants) / max(len(premium_tenants), 1),
-                'avg_margin': sum(t['margin'] for t in premium_tenants) / max(len(premium_tenants), 1),
-                'total_profit_loss': sum(t['margin'] for t in premium_tenants)
-            }
+        'platform_totals': {
+            'total_revenue': round(total_revenue, 2),
+            'total_cost': round(total_cost, 2),
+            'platform_margin_percentage': round(platform_margin, 1)
         }
     }
 
 def decimal_serializer(obj):
+    """JSON serializer for Decimal objects"""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+def decimal_serializer(obj):
+    """JSON serializer for Decimal objects"""
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")

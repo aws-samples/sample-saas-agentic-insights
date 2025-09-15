@@ -1,3 +1,19 @@
+"""
+COST PREDICTION ACTION GROUP
+Purpose: Historical data for LLM-based forecasting and trend analysis
+
+Extracts:
+├── Historical cost trends (last 3-6 months of raw data)
+├── Monthly tenant counts and tier distribution
+├── Usage pattern changes over time
+├── Revenue history based on tier pricing
+└── Raw metrics for LLM to analyze patterns and make predictions
+
+Returns RAW DATA for AI agent to perform intelligent forecasting in:
+- === COST FORECAST === (LLM analyzes trends and predicts next 3 months)
+- Growth insights for === AI RECOMMENDATIONS === (LLM identifies optimization opportunities)
+"""
+
 import json
 import boto3
 import os
@@ -15,9 +31,9 @@ def handler(event, context):
             request_body = json.loads(request_body)
         
         tenant_ids = request_body.get('tenant_ids', ['all'])
-        forecast_months = request_body.get('forecast_months', 3)
+        historical_months = request_body.get('historical_months', 3)
         
-        prediction_data = predict_tenant_costs(tenant_ids, forecast_months)
+        historical_data = get_historical_data(tenant_ids, historical_months)
         
         return {
             "messageVersion": "1.0",
@@ -28,7 +44,7 @@ def handler(event, context):
                 "httpStatusCode": 200,
                 "responseBody": {
                     "application/json": {
-                        "body": json.dumps(prediction_data, default=decimal_serializer)
+                        "body": json.dumps(historical_data, default=decimal_serializer)
                     }
                 }
             }
@@ -50,22 +66,10 @@ def handler(event, context):
             }
         }
 
-def predict_tenant_costs(tenant_ids, forecast_months):
-    """Predict future costs based on historical trends"""
+def get_historical_data(tenant_ids, historical_months):
+    """Get raw historical data for LLM to analyze trends and make predictions"""
     
     aggregation_table = boto3.resource('dynamodb').Table(os.environ['METRICS_AGGREGATION_TABLE_NAME'])
-    
-    pricing = {
-        'api_gateway_requests': 3.50e-6,
-        'lambda_gb_second': 0.0000166667,
-        'lambda_request': 2.0e-7,
-        'dynamodb_wcu': 1.25e-6,
-        'dynamodb_rcu': 0.25e-6,
-        'claude_haiku_input_token': 0.25e-6,
-        'claude_haiku_output_token': 1.25e-6,
-        's3_requests': 0.4e-3,
-        's3_storage_gb_month': 0.023,
-    }
     
     predictions = []
     
@@ -97,27 +101,9 @@ def predict_tenant_costs(tenant_ids, forecast_months):
                     )
                     
                     for item in response['Items']:
-                        metric_name = item['metric_name']
-                        sum_value = float(item['sum'])
-                        
-                        if metric_name == 'api_gateway_requests':
-                            monthly_cost += sum_value * pricing['api_gateway_requests']
-                        elif metric_name == 'lambda_gb_seconds':
-                            monthly_cost += sum_value * pricing['lambda_gb_second']
-                        elif metric_name == 'lambda_requests':
-                            monthly_cost += sum_value * pricing['lambda_request']
-                        elif metric_name == 'dynamodb_rcu_consumed':
-                            monthly_cost += sum_value * pricing['dynamodb_rcu']
-                        elif metric_name == 'dynamodb_wcu_consumed':
-                            monthly_cost += sum_value * pricing['dynamodb_wcu']
-                        elif metric_name == 'bedrock_input_tokens':
-                            monthly_cost += sum_value * pricing['claude_haiku_input_token']
-                        elif metric_name == 'bedrock_output_tokens':
-                            monthly_cost += sum_value * pricing['claude_haiku_output_token']
-                        elif metric_name == 's3_requests':
-                            monthly_cost += sum_value * pricing['s3_requests'] / 1000
-                        elif metric_name == 's3_storage_gb_hours':
-                            monthly_cost += sum_value * pricing['s3_storage_gb_month'] / (30 * 24)
+                        # Use pre-calculated estimated_cost instead of manual pricing
+                        if 'estimated_cost' in item:
+                            monthly_cost += float(item['estimated_cost'])
                     
                     current_date += timedelta(days=1)
                 
@@ -139,7 +125,7 @@ def predict_tenant_costs(tenant_ids, forecast_months):
             
             # Generate predictions
             monthly_predictions = []
-            for month in range(1, forecast_months + 1):
+            for month in range(1, historical_months + 1):
                 predicted_cost = current_cost * (1 + growth_rate) ** month
                 confidence = max(0.6, 0.9 - (month * 0.1))  # Decreasing confidence over time
                 
@@ -166,17 +152,21 @@ def predict_tenant_costs(tenant_ids, forecast_months):
     total_current = sum(p['current_monthly_cost'] for p in predictions)
     total_predicted = sum(p['total_predicted_cost'] for p in predictions)
     
-    return {
+    result = {
         'tenant_predictions': predictions,
         'platform_forecast': {
             'current_monthly_total': total_current,
             'predicted_total': total_predicted,
-            'growth_projection': ((total_predicted / (total_current * forecast_months)) - 1) * 100 if total_current > 0 else 0,
+            'growth_projection': ((total_predicted / (total_current * historical_months)) - 1) * 100 if total_current > 0 else 0,
             'confidence_level': 0.75,
             'key_drivers': ['tenant_growth', 'ai_usage_increase', 'feature_adoption'],
-            'forecast_months': forecast_months
+            'forecast_months': historical_months
         }
     }
+    
+    print(f"DEBUG: Cost prediction result JSON: {json.dumps(result, indent=2, default=decimal_serializer)}")
+    
+    return result
 
 def decimal_serializer(obj):
     if isinstance(obj, Decimal):

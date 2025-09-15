@@ -1,3 +1,18 @@
+"""
+INFRASTRUCTURE USAGE ACTION GROUP
+Purpose: Platform-wide aggregated data for OVERVIEW METRICS & SERVICE BREAKDOWN
+
+Extracts:
+├── Total platform costs by service (Lambda, DynamoDB, API Gateway, Bedrock)
+├── Overall platform totals across ALL tenants
+├── Service-level cost breakdown
+└── Platform-wide averages
+
+Returns data for AI agent sections:
+- === OVERVIEW METRICS === (Total Platform Cost, Average Cost Per Tenant, Total AI Usage)
+- === SERVICE BREAKDOWN === (Lambda Cost, DynamoDB Cost, API Gateway Cost, Bedrock AI Cost)
+"""
+
 import json
 import boto3
 import os
@@ -6,7 +21,7 @@ from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 
 def handler(event, context):
-    """Action Group Lambda for calculating infrastructure usage"""
+    """Action Group Lambda for calculating platform-wide infrastructure usage"""
     
     try:
         # Parse request body (Bedrock Agent format)
@@ -15,7 +30,7 @@ def handler(event, context):
             request_body = json.loads(request_body)
         
         tenant_ids = request_body.get('tenant_ids', ['all'])
-        time_period = request_body.get('time_period', 'last_30_days')
+        time_period = request_body.get('time_period', 'current_month')
         
         usage_data = calculate_infrastructure_usage(tenant_ids, time_period)
         
@@ -51,90 +66,84 @@ def handler(event, context):
         }
 
 def calculate_infrastructure_usage(tenant_ids, time_period):
-    """Calculate infrastructure usage from aggregated metrics data"""
+    """Calculate platform-wide infrastructure costs for OVERVIEW METRICS and SERVICE BREAKDOWN"""
     
-    pricing = {
-        'api_gateway_requests': 3.50e-6,
-        'lambda_gb_second': 0.0000166667,
-        'lambda_request': 2.0e-7,
-        'dynamodb_wcu': 1.25e-6,
-        'dynamodb_rcu': 0.25e-6,
-        'claude_haiku_input_token': 0.25e-6,
-        'claude_haiku_output_token': 1.25e-6,
-        's3_requests': 0.4e-3,
-        's3_storage_gb_month': 0.023,
-    }
-    
-    # Calculate date range
-    end_date = datetime.now().date()
-    if time_period == 'last_30_days':
-        start_date = end_date - timedelta(days=30)
-    elif time_period == 'last_7_days':
-        start_date = end_date - timedelta(days=7)
-    else:
-        start_date = end_date - timedelta(days=30)
-    
-    total_costs = {'lambda': 0, 'dynamodb': 0, 'api_gateway': 0, 'bedrock': 0, 's3': 0}
     aggregation_table = boto3.resource('dynamodb').Table(os.environ['METRICS_AGGREGATION_TABLE_NAME'])
     
-    for tenant_id in tenant_ids:
-        if not tenant_id.strip():
-            continue
-            
-        # Query aggregated metrics for this tenant in date range
-        current_date = start_date
-        while current_date <= end_date:
-            date_str = current_date.strftime('%Y-%m-%d')
-            
-            response = aggregation_table.query(
-                KeyConditionExpression=Key('tenant_id').eq(tenant_id.strip()) & 
-                                     Key('metric_date_type').begins_with(date_str)
-            )
-            
-            for item in response['Items']:
-                metric_name = item['metric_name']
-                sum_value = float(item['sum'])
-                
-                if metric_name == 'api_gateway_requests':
-                    total_costs['api_gateway'] += sum_value * pricing['api_gateway_requests']
-                elif metric_name == 'lambda_gb_seconds':
-                    total_costs['lambda'] += sum_value * pricing['lambda_gb_second']
-                elif metric_name == 'lambda_requests':
-                    total_costs['lambda'] += sum_value * pricing['lambda_request']
-                elif metric_name == 'dynamodb_rcu_consumed':
-                    total_costs['dynamodb'] += sum_value * pricing['dynamodb_rcu']
-                elif metric_name == 'dynamodb_wcu_consumed':
-                    total_costs['dynamodb'] += sum_value * pricing['dynamodb_wcu']
-                elif metric_name == 'bedrock_input_tokens':
-                    total_costs['bedrock'] += sum_value * pricing['claude_haiku_input_token']
-                elif metric_name == 'bedrock_output_tokens':
-                    total_costs['bedrock'] += sum_value * pricing['claude_haiku_output_token']
-                elif metric_name == 's3_requests':
-                    total_costs['s3'] += sum_value * pricing['s3_requests'] / 1000
-                elif metric_name == 's3_storage_gb_hours':
-                    total_costs['s3'] += sum_value * pricing['s3_storage_gb_month'] / (30 * 24)
-            
-            current_date += timedelta(days=1)
+    # Get current month data
+    end_date = datetime.now().date()
+    start_date = end_date.replace(day=1)
+    month_filter = start_date.strftime('%Y-%m')
     
-    total_cost = sum(total_costs.values())
-    tenant_count = len([t for t in tenant_ids if t.strip()])
+    print(f"DEBUG: Filtering by month: {month_filter}")
+    
+    # Platform totals
+    service_costs = {'lambda': 0, 'dynamodb': 0, 'api_gateway': 0, 'bedrock': 0}
+    total_ai_usage = 0
+    unique_tenants = set()
+    
+    # Query all metrics for current month
+    response = aggregation_table.scan(
+        FilterExpression='begins_with(metric_date_type, :month)',
+        ExpressionAttributeValues={':month': month_filter}
+    )
+    
+    print(f"DEBUG: Found {len(response['Items'])} items")
+    
+    for item in response['Items']:
+        tenant_id = item['tenant_id']
+        metric_name = item['metric_name']
+        sum_value = float(item.get('sum', 0))
+        
+        print(f"DEBUG: Processing {tenant_id} - {metric_name} - sum: {sum_value}")
+        
+        unique_tenants.add(tenant_id)
+        
+        # Use pre-calculated costs from MetricsAggregation if available
+        if 'estimated_cost' in item:
+            cost = float(item['estimated_cost'])
+            print(f"DEBUG: Found estimated_cost: {cost}")
+            
+            if 'lambda' in metric_name:
+                service_costs['lambda'] += cost
+            elif 'dynamodb' in metric_name:
+                service_costs['dynamodb'] += cost
+            elif 'api_gateway' in metric_name:
+                service_costs['api_gateway'] += cost
+            elif 'bedrock' in metric_name:
+                service_costs['bedrock'] += cost
+        
+        # Track AI usage (tokens)
+        if metric_name in ['bedrock_input_tokens', 'bedrock_output_tokens']:
+            total_ai_usage += sum_value
+    
+    total_cost = sum(service_costs.values())
+    tenant_count = len(unique_tenants)
+    avg_cost_per_tenant = total_cost / tenant_count if tenant_count > 0 else 0
+    
+    print(f"DEBUG: Final totals - cost: {total_cost}, tenants: {tenant_count}, avg: {avg_cost_per_tenant}")
     
     return {
-        'platform_totals': {
-            'total_cost': total_cost,
-            'total_tenants': tenant_count,
-            'avg_cost_per_tenant': total_cost / max(tenant_count, 1)
-        },
+        'total_platform_cost': round(total_cost, 2),
+        'average_cost_per_tenant': round(avg_cost_per_tenant, 2),
+        'tenant_count': tenant_count,
+        'total_ai_usage': int(total_ai_usage),
         'service_breakdown': {
-            service: {
-                'cost': cost,
-                'percentage': (cost / total_cost * 100) if total_cost > 0 else 0
-            }
-            for service, cost in total_costs.items()
+            'lambda_cost': round(service_costs['lambda'], 2),
+            'dynamodb_cost': round(service_costs['dynamodb'], 2),
+            'api_gateway_cost': round(service_costs['api_gateway'], 2),
+            'bedrock_cost': round(service_costs['bedrock'], 2)
         }
     }
 
 def decimal_serializer(obj):
+    """JSON serializer for Decimal objects"""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+def decimal_serializer(obj):
+    """JSON serializer for Decimal objects"""
     if isinstance(obj, Decimal):
         return float(obj)
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")

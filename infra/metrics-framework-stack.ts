@@ -44,13 +44,20 @@ export class MetricsFrameworkStack extends cdk.Stack {
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
     });
 
-    // DynamoDB table for aggregated metrics
+    // DynamoDB table for aggregated metrics (monthly aggregation)
     this.metricsAggregationTable = new dynamodb.Table(this, 'MetricsAggregationTable', {
       tableName: 'AgenticInsights-MetricsAggregation',
       partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'metric_date_type', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // GSI for month-based queries
+    this.metricsAggregationTable.addGlobalSecondaryIndex({
+      indexName: 'MonthIndex',
+      partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'metric_name', type: dynamodb.AttributeType.STRING },
     });
 
     // Lambda Layer for metrics collection
