@@ -42,37 +42,31 @@ def handler(event, context):
             prompt = "Predict platform costs for the next 3 months based on current usage patterns across all tenants. Include growth projections and cost optimization recommendations."
         elif analysis_type == 'dashboard_complete':
             prompt = """Provide a comprehensive cost analysis for the Cost analysis admin dashboard. Follow this EXACT format: 
+1. === TENANT ANALYSIS ===
+for the current month, calculate the following for each tenant :   
+[TenantID | Tier | Cost | Revenue | Margin | Margin %]
 
-1. === METRICS OVERVIEW === 
+2. === METRICS OVERVIEW === 
 For the current month,  
 Total Platform Cost: $X.XXXXX
+Platform Margin: X.XXXXX
 Average Cost Per Tenant (Basic): $X.XXXXX  
 Average Cost Per Tenant (Premium): $X.XXXXX  
-Platform Margin: X.XXXXX%
-Total AI Usage: X tokens (input + output)
 
-2. === SERVICE BREAKDOWN ===
-For the current month,  
-Lambda Cost: $X.XXXXX
-DynamoDB Cost: $X.XXXXX
-API Gateway Cost: $X.XXXXX
-Bedrock AI Cost: $X.XXXXX
-Any other AWS service cost available : $X.XXXXX
-
-3. === TENANT ANALYSIS ===
-for the current month,  
-[For each tenant: TenantID | Tier | Cost | Revenue | Margin | Margin %]
+3. === SERVICE BREAKDOWN ===
+For the current month, calculate the following costs per each tier. have this format for cost : $X.XXXXX
+[Tier | Lambda | DynamoDB | API Gateway ]
 
 4. === COST FORECAST ===
-Based on the average cost per tenant values during last 2 months and current month, Predict and forecast the cost per tenant for the next 3 months. Use cost-prediction action group. Include last 2 months, current month and next 3 month. Format as follows. Use numbering for denoting Months, 0 is current month : -2, -1, 0, 1, 2, 3
-[Month | average cost per tenant ]
+Calculate the average Cost per tenant, per Tier, per Month for the last 2 months and current month. Based on these values Predict and forecast the average cost per tenant for the next 3 months. Output Format as follows. Use numbering for denoting Months per tier, 0 is the current month : -2, -1, 0, 1, 2, 3
+[Tier | Month | average cost per tenant ]
 
 5. === REVENUE FORECAST ===
-Based on the Revenue and Margin during last 2 months and current month, Predict and forecast the Revenue and Margin for the next 3 months. Use cost-prediction action group. Include current month's values too. Format as follows. Use numbering for denoting Months, 0 is current month : -2, -1, 0, 1, 2, 3
-[Month | Cost | Revenue | Margin ]
+Calculate the total Revenue and Margin, per Tier, per Month for the last 2 months and current month. Based on these values Predict and forecast the total Revenue and Margin for the next 3 months. Output Format as follows. Use numbering for denoting Months per tier, 0 is the current month : -2, -1, 0, 1, 2, 3
+[Tier | Month | Cost | Revenue | Margin ]
 
 6. === AI RECOMMENDATIONS ===
-Looking at the historical values and above metrics, Provide TOP 5 actionable cost optimization and forecasting recommendations for the SaaS provider with specific impact estimates.MUST use given groups to get real data. Base ALL recommendations on the ACTUAL data and costs provided, not generic advices.
+Looking at the historical values predicted values above, Provide TOP 5 actionable Forecasting recommendations for the SaaS provider with specific impact estimates.
 
 Format the response as a structured analysis that can be parsed for dashboard display. Focus on actionable insights and specific dollar amounts where possible."""
         else:

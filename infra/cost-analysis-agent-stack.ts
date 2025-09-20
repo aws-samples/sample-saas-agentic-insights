@@ -34,10 +34,10 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     // Load agent instructions
     const agentInstructions = fs.readFileSync(agentInstructionsPath, 'utf8').trim();
 
-    // Lambda functions for action groups (using agent-specific directory)
-    const infrastructureUsageFunction = new lambda.Function(this, 'InfrastructureUsageFunction', {
+    // Lambda functions for new action groups
+    const currentMonthAnalysisFunction = new lambda.Function(this, 'CurrentMonthAnalysisFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
-      handler: 'infrastructure_usage.handler',
+      handler: 'current_month_analysis.handler',
       code: lambda.Code.fromAsset('src/control-plane/agents/cost-analysis/action-groups'),
       timeout: cdk.Duration.seconds(60),
       environment: {
@@ -46,20 +46,9 @@ export class CostAnalysisAgentStack extends cdk.Stack {
       },
     });
 
-    const costAnalysisFunction = new lambda.Function(this, 'CostAnalysisFunction', {
+    const historicalForecastingFunction = new lambda.Function(this, 'HistoricalForecastingFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
-      handler: 'cost_analysis.handler',
-      code: lambda.Code.fromAsset('src/control-plane/agents/cost-analysis/action-groups'),
-      timeout: cdk.Duration.seconds(60),
-      environment: {
-        METRICS_TABLE_NAME: props.metricsTableName,
-        METRICS_AGGREGATION_TABLE_NAME: props.metricsAggregationTableName,
-      },
-    });
-
-    const costPredictionFunction = new lambda.Function(this, 'CostPredictionFunction', {
-      runtime: lambda.Runtime.PYTHON_3_11,
-      handler: 'cost_prediction.handler',
+      handler: 'historical_forecasting.handler',
       code: lambda.Code.fromAsset('src/control-plane/agents/cost-analysis/action-groups'),
       timeout: cdk.Duration.seconds(60),
       environment: {
@@ -69,16 +58,15 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     });
 
     // Grant Lambda permissions for action groups
-    infrastructureUsageFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
-    costAnalysisFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
-    costPredictionFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
+    currentMonthAnalysisFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
+    historicalForecastingFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
 
     // Grant DynamoDB permissions
     const metricsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.metricsTableName}`;
     const metricsAggTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.metricsAggregationTableName}`;
     const tenantsTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/Tenants`;
 
-    [infrastructureUsageFunction, costAnalysisFunction, costPredictionFunction].forEach(fn => {
+    [currentMonthAnalysisFunction, historicalForecastingFunction].forEach(fn => {
       fn.addToRolePolicy(new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:Scan'],
@@ -116,9 +104,8 @@ export class CostAnalysisAgentStack extends cdk.Stack {
               effect: iam.Effect.ALLOW,
               actions: ['lambda:InvokeFunction'],
               resources: [
-                infrastructureUsageFunction.functionArn,
-                costAnalysisFunction.functionArn,
-                costPredictionFunction.functionArn,
+                currentMonthAnalysisFunction.functionArn,
+                historicalForecastingFunction.functionArn,
               ],
             }),
           ],
@@ -137,34 +124,37 @@ export class CostAnalysisAgentStack extends cdk.Stack {
 
       actionGroups: [
         {
-          actionGroupName: 'infrastructure-usage',
-          description: 'Calculate detailed infrastructure usage per tenant',
-          actionGroupExecutor: { lambda: infrastructureUsageFunction.functionArn },
+          actionGroupName: 'current-month-cost-analysis',
+          description: 'Provides comprehensive cost analysis for current month including tenant breakdowns, platform metrics, and service costs by tier.',
+          actionGroupExecutor: { lambda: currentMonthAnalysisFunction.functionArn },
           apiSchema: {
             payload: JSON.stringify({
               openapi: '3.0.0',
-              info: { title: 'Infrastructure Usage API', version: '1.0.0' },
+              info: { title: 'Current Month Cost Analysis API', version: '1.0.0' },
               paths: {
-                '/calculate-usage': {
+                '/get-current-month-tenant-and-platform-metrics': {
                   post: {
-                    description: 'Calculate infrastructure usage for tenants',
+                    description: 'Retrieves detailed cost, revenue, and margin analysis for all tenants in the current month, plus platform-wide totals and service breakdowns by tier (basic vs premium). Returns tenant analysis, metrics overview, and service breakdown data.',
+                    operationId: 'getCurrentMonthTenantAndPlatformMetrics',
                     requestBody: {
-                      required: true,
                       content: {
                         'application/json': {
                           schema: {
                             type: 'object',
-                            properties: {
-                              tenant_ids: { type: 'array', items: { type: 'string' } },
-                              time_period: { type: 'string' }
-                            },
-                            required: ['tenant_ids', 'time_period']
+                            properties: {}
                           }
                         }
                       }
                     },
                     responses: {
-                      '200': { description: 'Success' }
+                      '200': { 
+                        description: 'Current month analysis data',
+                        content: {
+                          'application/json': {
+                            schema: { type: 'object' }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -173,69 +163,42 @@ export class CostAnalysisAgentStack extends cdk.Stack {
           }
         },
         {
-          actionGroupName: 'cost-analysis',
-          description: 'Analyze current costs per tenant with breakdown',
-          actionGroupExecutor: { lambda: costAnalysisFunction.functionArn },
+          actionGroupName: 'historical-cost-forecasting',
+          description: 'Analyzes historical cost and revenue trends across months to generate forecasts, predictions, and AI-driven recommendations.',
+          actionGroupExecutor: { lambda: historicalForecastingFunction.functionArn },
           apiSchema: {
             payload: JSON.stringify({
               openapi: '3.0.0',
-              info: { title: 'Cost Analysis API', version: '1.0.0' },
+              info: { title: 'Historical Cost Forecasting API', version: '1.0.0' },
               paths: {
-                '/analyze-costs': {
+                '/get-historical-trends-and-forecasting-data': {
                   post: {
-                    description: 'Analyze costs per tenant',
+                    description: 'Retrieves 3 months of historical cost and revenue data grouped by tier and month for trend analysis. Includes average costs per tenant, total revenues, and margins by tier over time. Essential for generating accurate forecasts and recommendations.',
+                    operationId: 'getHistoricalTrendsAndForecastingData',
                     requestBody: {
-                      required: true,
                       content: {
                         'application/json': {
                           schema: {
                             type: 'object',
                             properties: {
-                              tenant_ids: { type: 'array', items: { type: 'string' } }
-                            },
-                            required: ['tenant_ids']
+                              months_back: {
+                                type: 'integer',
+                                description: 'Number of historical months to analyze (default: 3)'
+                              }
+                            }
                           }
                         }
                       }
                     },
                     responses: {
-                      '200': { description: 'Success' }
-                    }
-                  }
-                }
-              }
-            })
-          }
-        },
-        {
-          actionGroupName: 'cost-prediction',
-          description: 'Predict tenant costs for next 3 months',
-          actionGroupExecutor: { lambda: costPredictionFunction.functionArn },
-          apiSchema: {
-            payload: JSON.stringify({
-              openapi: '3.0.0',
-              info: { title: 'Cost Prediction API', version: '1.0.0' },
-              paths: {
-                '/predict-costs': {
-                  post: {
-                    description: 'Predict future costs',
-                    requestBody: {
-                      required: true,
-                      content: {
-                        'application/json': {
-                          schema: {
-                            type: 'object',
-                            properties: {
-                              tenant_ids: { type: 'array', items: { type: 'string' } },
-                              forecast_months: { type: 'integer' }
-                            },
-                            required: ['tenant_ids', 'forecast_months']
+                      '200': { 
+                        description: 'Historical trends and forecasting data',
+                        content: {
+                          'application/json': {
+                            schema: { type: 'object' }
                           }
                         }
                       }
-                    },
-                    responses: {
-                      '200': { description: 'Success' }
                     }
                   }
                 }
