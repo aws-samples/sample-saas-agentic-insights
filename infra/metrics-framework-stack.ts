@@ -14,6 +14,7 @@ interface MetricsFrameworkStackProps extends cdk.StackProps {
 export class MetricsFrameworkStack extends cdk.Stack {
   public readonly metricsTable: dynamodb.Table;
   public readonly metricsAggregationTable: dynamodb.Table;
+  public readonly costPerTenantTable: dynamodb.Table;
   public readonly metricsCollectorLayer: lambda.LayerVersion;
 
   constructor(scope: Construct, id: string, props: MetricsFrameworkStackProps) {
@@ -50,6 +51,7 @@ export class MetricsFrameworkStack extends cdk.Stack {
       partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'metric_date_type', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
@@ -58,6 +60,22 @@ export class MetricsFrameworkStack extends cdk.Stack {
       indexName: 'MonthIndex',
       partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'metric_name', type: dynamodb.AttributeType.STRING },
+    });
+
+    // DynamoDB table for cost per tenant (aggregated from MetricsAggregation)
+    this.costPerTenantTable = new dynamodb.Table(this, 'CostPerTenantTable', {
+      tableName: 'AgenticInsights-CostPerTenant',
+      partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'month', type: dynamodb.AttributeType.STRING }, // Format: YYYY-MM
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // GSI for month-based queries across all tenants
+    this.costPerTenantTable.addGlobalSecondaryIndex({
+      indexName: 'MonthIndex',
+      partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'tier', type: dynamodb.AttributeType.STRING },
     });
 
     // Lambda Layer for metrics collection
@@ -90,9 +108,30 @@ export class MetricsFrameworkStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(60),
     });
 
+    // CostAggregatorService Lambda function (processes MetricsAggregation stream)
+    const costAggregatorService = new lambda.Function(this, 'CostAggregatorService', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/control-plane/cost-aggregator'),
+      environment: {
+        COST_PER_TENANT_TABLE_NAME: this.costPerTenantTable.tableName,
+        METRICS_AGGREGATION_TABLE_NAME: this.metricsAggregationTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(60),
+    });
+
+    // Add DynamoDB stream event source to cost aggregator
+    costAggregatorService.addEventSource(new DynamoEventSource(this.metricsAggregationTable, {
+      startingPosition: lambda.StartingPosition.LATEST,
+      batchSize: 10,
+      retryAttempts: 3,
+    }));
+
     // Grant permissions
     this.metricsTable.grantWriteData(metricsService);
     this.metricsAggregationTable.grantReadWriteData(metricsAggregatorService);
+    this.metricsAggregationTable.grantReadData(costAggregatorService);
+    this.costPerTenantTable.grantReadWriteData(costAggregatorService);
 
     // EventBridge rule for metrics processing (reuse existing bus)
     new events.Rule(this, 'MetricsProcessingRule', {
@@ -122,6 +161,11 @@ export class MetricsFrameworkStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'MetricsAggregationTableName', {
       value: this.metricsAggregationTable.tableName,
       description: 'DynamoDB table for aggregated metrics',
+    });
+
+    new cdk.CfnOutput(this, 'CostPerTenantTableName', {
+      value: this.costPerTenantTable.tableName,
+      description: 'DynamoDB table for cost per tenant aggregation',
     });
 
     new cdk.CfnOutput(this, 'MetricsCollectorLayerArn', {
