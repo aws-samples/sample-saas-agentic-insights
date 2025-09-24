@@ -6,6 +6,7 @@ import { AppPlaneStack } from './app-plane-stack';
 import { AIDescriptionStack } from './ai-description-stack';
 import { MetricsFrameworkStack } from './metrics-framework-stack';
 import { CostAnalysisAgentStack } from './cost-analysis-agent-stack';
+import { AdvancedCostAnalysisAgentStack } from './advanced-cost-analysis-agent-stack';
 
 const app = new cdk.App();
 
@@ -62,6 +63,14 @@ const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsC
   controlPlaneApiRootResourceId: controlPlaneStack.controlPlaneApi.root.resourceId,
 });
 
+// Advanced Cost Analysis Agent Stack - handles advanced financial forecasting
+const advancedCostAnalysisAgentStack = new AdvancedCostAnalysisAgentStack(app, 'AgenticInsightsAdvancedCostAnalysisAgent', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  },
+});
+
 // Add dependencies
 metricsFrameworkStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(controlPlaneStack);
@@ -69,3 +78,5 @@ appPlaneStack.addDependency(metricsFrameworkStack);
 aiDescriptionStack.addDependency(appPlaneStack);
 costAnalysisAgentStack.addDependency(metricsFrameworkStack);
 costAnalysisAgentStack.addDependency(controlPlaneStack);
+advancedCostAnalysisAgentStack.addDependency(metricsFrameworkStack);
+advancedCostAnalysisAgentStack.addDependency(controlPlaneStack);

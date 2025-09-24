@@ -132,21 +132,21 @@ class CostAnalysisController {
             this.showLoading();
             
             // Debug: Check if API URL is configured
-            console.log('🔗 API URL:', window.APP_CONFIG?.COST_ANALYSIS_API_URL);
+            console.log('🔗 API URL:', window.APP_CONFIG?.INSIGHT_DASHBOARD_API_URL);
             
-            if (!window.APP_CONFIG?.COST_ANALYSIS_API_URL) {
-                throw new Error('COST_ANALYSIS_API_URL not configured in APP_CONFIG');
+            if (!window.APP_CONFIG?.INSIGHT_DASHBOARD_API_URL) {
+                throw new Error('INSIGHT_DASHBOARD_API_URL not configured in APP_CONFIG');
             }
             
-            // Call Cost Analysis API for complete dashboard data
-            console.log('📡 Making API call to cost analysis endpoint...');
-            const response = await fetch(window.APP_CONFIG.COST_ANALYSIS_API_URL, {
+            // Call Insight Dashboard API for cost analysis
+            console.log('📡 Making API call to insight dashboard endpoint...');
+            const response = await fetch(window.APP_CONFIG.INSIGHT_DASHBOARD_API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    analysis_type: 'dashboard_complete'
+                    analysis_type: 'cost-analysis'
                 })
             });
             
@@ -172,34 +172,6 @@ class CostAnalysisController {
             
         } catch (error) {
             console.error('❌ Failed to load cost analysis data:', error);
-            
-            // Show raw error details for debugging
-            const errorContainer = document.getElementById('page-content');
-            errorContainer.innerHTML = `
-                <div class="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-8">
-                    <div class="max-w-4xl mx-auto">
-                        <h1 class="text-4xl font-bold text-white mb-8">Cost Analysis API Error</h1>
-                        <div class="bg-red-900/50 border border-red-500/50 rounded-xl p-6">
-                            <h2 class="text-xl font-semibold text-red-300 mb-4">API Call Failed</h2>
-                            <div class="space-y-4">
-                                <div>
-                                    <h3 class="text-lg font-medium text-white mb-2">Error Details:</h3>
-                                    <pre class="bg-gray-800 p-4 rounded-lg text-red-300 text-sm overflow-auto">${error.message}</pre>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-medium text-white mb-2">API Endpoint:</h3>
-                                    <code class="bg-gray-800 p-2 rounded text-blue-300">${window.APP_CONFIG.COST_ANALYSIS_API_URL}</code>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-medium text-white mb-2">Request Payload:</h3>
-                                    <pre class="bg-gray-800 p-4 rounded-lg text-yellow-300 text-sm">{"analysis_type": "dashboard_complete"}</pre>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            return;
         } finally {
             this.hideLoading();
         }

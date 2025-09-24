@@ -1,0 +1,6 @@
+name: agentic-insights-advanced-cost-analysis-agent
+description: Advanced SaaS cost analysis agent for financial forecasting and optimization insights - v2
+model: us.anthropic.claude-3-haiku-20240307-v1:0
+idle_session_ttl: 1800
+alias_name: prod
+alias_description: Production alias for advanced cost analysis agent

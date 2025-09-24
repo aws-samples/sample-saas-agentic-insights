@@ -120,10 +120,31 @@ export class ControlPlaneStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(5),
     });
 
+    // Insight Dashboard API Lambda
+    const insightDashboardApiFunction = new lambda.Function(this, 'InsightDashboardApiFunction', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/control-plane/insight-dashboard-api'),
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        // Environment variables will be set via deployment script or separate stack
+        // ADVANCED_COST_ANALYSIS_AGENT_ID and ADVANCED_COST_ANALYSIS_AGENT_ALIAS_ID
+      },
+    });
+
     // Grant permissions
     tenantsTable.grantReadWriteData(registrationFunction);
     tenantsTable.grantReadWriteData(tenantManagementFunction);
     tenantsTable.grantReadWriteData(tenantProvisioningFunction);
+
+    // Grant Bedrock permissions to insight dashboard function
+    insightDashboardApiFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock-agent-runtime:InvokeAgent',
+      ],
+      resources: ['*'], // Will be restricted to specific agent in deployment
+    }));
 
     this.eventBus.grantPutEventsTo(registrationFunction);
     this.eventBus.grantPutEventsTo(tenantManagementFunction);
@@ -156,6 +177,7 @@ export class ControlPlaneStack extends cdk.Stack {
     const registrationIntegration = new apigateway.LambdaIntegration(registrationFunction);
     const loginIntegration = new apigateway.LambdaIntegration(loginFunction);
     const tenantManagementIntegration = new apigateway.LambdaIntegration(tenantManagementFunction);
+    const insightDashboardIntegration = new apigateway.LambdaIntegration(insightDashboardApiFunction);
 
     // API routes
     this.controlPlaneApi.root.addResource('register').addMethod('POST', registrationIntegration);
@@ -165,6 +187,10 @@ export class ControlPlaneStack extends cdk.Stack {
     tenantsResource.addMethod('GET', tenantManagementIntegration);
     tenantsResource.addMethod('POST', tenantManagementIntegration);
     tenantsResource.addResource('{tenant_id}').addMethod('DELETE', tenantManagementIntegration);
+
+    // Insight Dashboard API
+    const insightDashboardResource = this.controlPlaneApi.root.addResource('insight-dashboard');
+    insightDashboardResource.addMethod('POST', insightDashboardIntegration);
 
     // EventBridge rule for tenant provisioning
     new events.Rule(this, 'TenantProvisioningRule', {

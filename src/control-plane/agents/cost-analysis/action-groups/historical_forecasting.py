@@ -51,8 +51,14 @@ def handler(event, context):
     """
     
     try:
-        # Parse request body
-        request_body = json.loads(event.get('requestBody', '{}'))
+        # Handle both dict and string inputs from Bedrock Agent
+        if isinstance(event, dict):
+            request_body = event.get('requestBody', {})
+            if isinstance(request_body, str):
+                request_body = json.loads(request_body)
+        else:
+            request_body = json.loads(event.get('requestBody', '{}'))
+        
         months_back = request_body.get('months_back', 3)
         
         # Get historical data

@@ -95,6 +95,9 @@ cdk deploy AgenticInsightsMetricsFramework --require-approval never
 print_status "Phase 2: Deploying Cost Analysis Agent Stack..."
 cdk deploy AgenticInsightsCostAnalysisAgent --require-approval never
 
+print_status "Phase 2.1: Deploying Advanced Cost Analysis Agent Stack..."
+cdk deploy AgenticInsightsAdvancedCostAnalysisAgent --require-approval never
+
 print_status "Phase 3: Updating Application Services with Metrics Collection..."
 cdk deploy AgenticInsightsAppPlane --require-approval never
 
@@ -129,6 +132,16 @@ COST_ANALYSIS_API=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].Outputs[?OutputKey==`CostAnalysisApiUrl`].OutputValue' \
     --output text 2>/dev/null || echo "")
 
+ADVANCED_COST_ANALYSIS_AGENT_ID=$(aws cloudformation describe-stacks \
+    --stack-name AgenticInsightsAdvancedCostAnalysisAgent \
+    --query 'Stacks[0].Outputs[?OutputKey==`AdvancedCostAnalysisAgentId`].OutputValue' \
+    --output text 2>/dev/null || echo "")
+
+ADVANCED_COST_ANALYSIS_AGENT_ALIAS_ID=$(aws cloudformation describe-stacks \
+    --stack-name AgenticInsightsAdvancedCostAnalysisAgent \
+    --query 'Stacks[0].Outputs[?OutputKey==`AdvancedCostAnalysisAgentAliasId`].OutputValue' \
+    --output text 2>/dev/null || echo "")
+
 # Wait for Bedrock Agent to be prepared
 if [ -n "$COST_ANALYSIS_AGENT_ID" ]; then
     print_status "Waiting for Bedrock Agent to be prepared (this may take 2-3 minutes)..."
@@ -160,6 +173,30 @@ if [ -n "$COST_ANALYSIS_AGENT_ID" ]; then
     fi
 fi
 
+# Update Insight Dashboard API with Advanced Agent environment variables
+if [ -n "$ADVANCED_COST_ANALYSIS_AGENT_ID" ] && [ -n "$ADVANCED_COST_ANALYSIS_AGENT_ALIAS_ID" ]; then
+    print_status "Updating Insight Dashboard API with Advanced Agent environment variables..."
+    
+    # Get the insight dashboard function name
+    INSIGHT_FUNCTION_NAME=$(aws lambda list-functions \
+        --query 'Functions[?contains(FunctionName, `InsightDashboardApiFunction`)].FunctionName' \
+        --output text 2>/dev/null || echo "")
+    
+    if [ -n "$INSIGHT_FUNCTION_NAME" ]; then
+        print_status "Updating Lambda function: $INSIGHT_FUNCTION_NAME"
+        
+        # Update environment variables
+        aws lambda update-function-configuration \
+            --function-name "$INSIGHT_FUNCTION_NAME" \
+            --environment Variables="{ADVANCED_COST_ANALYSIS_AGENT_ID=$ADVANCED_COST_ANALYSIS_AGENT_ID,ADVANCED_COST_ANALYSIS_AGENT_ALIAS_ID=$ADVANCED_COST_ANALYSIS_AGENT_ALIAS_ID}" \
+            --region "$AWS_REGION" > /dev/null
+        
+        print_success "Advanced Agent environment variables updated successfully"
+    else
+        print_warning "Insight Dashboard function not found"
+    fi
+fi
+
 # Update admin panel configuration with Cost Analysis API URL
 if [ -n "$COST_ANALYSIS_API" ]; then
     print_status "Updating admin panel configuration with Cost Analysis API..."
@@ -188,6 +225,7 @@ window.APP_CONFIG = {
     ADMIN_PANEL_URL: '$ADMIN_PANEL_URL',
     LANDING_PAGE_URL: '$LANDING_PAGE_URL',
     COST_ANALYSIS_API_URL: '$COST_ANALYSIS_API',
+    INSIGHT_DASHBOARD_API_URL: '${CONTROL_PLANE_API}/insight-dashboard',
     REGION: '$AWS_REGION'
 };"
     
@@ -229,8 +267,12 @@ fi
 echo
 echo "🤖 AI Resources:"
 if [ -n "$COST_ANALYSIS_AGENT_ID" ]; then
-    echo "Bedrock Agent ID: $COST_ANALYSIS_AGENT_ID"
+    echo "Cost Analysis Agent ID: $COST_ANALYSIS_AGENT_ID"
     echo "  └── Action Groups: Infrastructure Usage, Cost Analysis, Cost Prediction"
+fi
+if [ -n "$ADVANCED_COST_ANALYSIS_AGENT_ID" ]; then
+    echo "Advanced Cost Analysis Agent ID: $ADVANCED_COST_ANALYSIS_AGENT_ID"
+    echo "  └── Model: Claude 3 Haiku (Financial Forecasting & Optimization)"
 fi
 echo
 echo "📊 Features Deployed:"
@@ -238,6 +280,7 @@ echo "• Enhanced Metrics Collection Library (Lambda Layer)"
 echo "• Event-Driven Metrics Pipeline (EventBridge)"
 echo "• Metrics Aggregation Service (DynamoDB Streams)"
 echo "• AI-Powered Cost Analysis (Claude 3 Haiku)"
+echo "• Advanced Cost Analysis Agent (Financial Forecasting)"
 echo "• Enhanced Admin Dashboard with Cost Analysis Tab"
 echo "• Real-time Cost Tracking (90-day retention)"
 echo
