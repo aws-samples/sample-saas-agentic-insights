@@ -36,20 +36,23 @@ def handler(event, context):
             bedrock_agent_runtime = boto3.client('bedrock-agent-runtime')
             
             # Create prompt for cost analysis
-            prompt = """Refer to the "historical dataset" from CostPerTenant table and Provide following data for the Cost analysis admin dashboard. Follow this EXACT format: 
+            prompt = """Using the Historical Cost Dataset API, please execute the getHistoricalCostDataset action to retrieve the complete dataset from the CostPerTenant table. This dataset contains tenant cost/margin data in format: [tenant_id | month | tier | cost | revenue | margin | margin_percentage].
+
+Once you have retrieved the historical cost dataset using the getHistoricalCostDataset action, provide the following analysis for the Cost analysis admin dashboard in this EXACT format:
+
             1. === COST ANALYSIS ===
-            Summarize the given "historical dataset" and calculate the "average cost per tenant" dataset per month basis on following format
-            [month | tier | avg_cost | profit | margin | margin_percentage]
+            Summarize the historical cost dataset and calculate the average cost/revenue per month by tier:
+            [month | tier | avg_cost | avg_revenue | avg_margin | avg_margin_percentage]
 
             2. === COST FORECAST ===
-            Use Monte Carlo simulation to forecast the next 6 months dataset ("6 months forecast") on the following format by referring to the above "average cost per tenant" dataset. Must generate the best realistic values: 
-            [month | tier | avg_cost | profit | margin | margin_percentage]
+            Based on the historical trends, forecast the next 6 months using Monte Carlo simulation:
+            [month | tier | forecasted_cost | forecasted_revenue | forecasted_margin | forecasted_margin_percentage]
 
             3. === AI SUMMARY ===
-            Provide TOP 5 findings looking at the "average cost per tenant" and "6 months forecast" datasets for the tenant behavior, cost margin variations. 
+            Analyze the historical data and forecasts to provide TOP 5 key findings about tenant behavior, cost patterns, and margin variations.
 
             4. === AI RECOMMENDATIONS ===
-            Looking at the  "average cost per tenant" and "6 months forecast", Provide TOP 5 actionable  recommendations for the SaaS provider that helps to reduce cost per tenant and improve overall margin. Focus on actionable insights and specific dollar amounts where possible."""
+            Based on the analysis, provide TOP 5 actionable recommendations for the SaaS provider to reduce costs and improve margins. Include specific dollar impact estimates where possible."""
             
             # Invoke agent with retry logic
             max_retries = 3
@@ -62,9 +65,9 @@ def handler(event, context):
                 try:
                     print(f"Attempt {attempt + 1} of {max_retries}")
                     response = bedrock_agent_runtime.invoke_agent(
-                        agentId='EIRUIXKAT9',  # Working cost analysis agent
-                        agentAliasId='HPYPHQSMIU',  # Working agent alias
-                        sessionId=f"cost-analysis-session-{context.aws_request_id}",
+                        agentId='JSJBYKS3WL',  # Advanced cost analysis agent
+                        agentAliasId='E65OALIJPR',  # Advanced agent alias
+                        sessionId=f"advanced-cost-analysis-session-{context.aws_request_id}",
                         inputText=prompt
                     )
                     
@@ -104,7 +107,7 @@ def handler(event, context):
                 'analysis': result_text,
                 'analysis_type': analysis_type,
                 'timestamp': context.aws_request_id,
-                'agent': 'cost-analysis'  # Working agent
+                'agent': 'advanced-cost-analysis'  # Advanced agent
             }
             print(f"Final response body: {json.dumps(response_body)}")
             
