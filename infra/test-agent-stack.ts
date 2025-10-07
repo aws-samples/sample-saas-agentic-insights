@@ -1,0 +1,170 @@
+import * as cdk from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Construct } from 'constructs';
+
+interface TestAgentStackProps extends cdk.StackProps {
+  costPerTenantTableName: string;
+}
+
+export class TestAgentStack extends cdk.Stack {
+  public readonly testAgent: bedrock.CfnAgent;
+  public readonly testAgentAlias: bedrock.CfnAgentAlias;
+
+  constructor(scope: Construct, id: string, props: TestAgentStackProps) {
+    super(scope, id, props);
+
+    // Load agent configuration
+    const agentConfigPath = path.join(__dirname, '../src/control-plane/agents/test-agent/agent-config.yaml');
+    const agentInstructionsPath = path.join(__dirname, '../src/control-plane/agents/test-agent/instructions.txt');
+    
+    // Parse agent config
+    const agentConfigContent = fs.readFileSync(agentConfigPath, 'utf8');
+    const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-test-agent';
+    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'anthropic.claude-3-haiku-20240307-v1:0';
+    const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'Simple AI agent for exploring CostPerTenant dataset';
+    
+    // Load agent instructions
+    const agentInstructions = fs.readFileSync(agentInstructionsPath, 'utf8').trim();
+
+    // Action Group Lambda Function
+    const getCostDatasetFunction = new lambda.Function(this, 'GetCostDatasetFunction', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'get_cost_dataset.handler',
+      code: lambda.Code.fromAsset('src/control-plane/agents/test-agent/action-groups'),
+      timeout: cdk.Duration.seconds(60),
+      environment: {
+        COST_PER_TENANT_TABLE_NAME: props.costPerTenantTableName,
+      },
+    });
+
+    // Grant Lambda permissions
+    getCostDatasetFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
+
+    // Grant DynamoDB permissions
+    const costPerTenantTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.costPerTenantTableName}`;
+    getCostDatasetFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['dynamodb:Scan', 'dynamodb:Query'],
+      resources: [costPerTenantTableArn],
+    }));
+
+    // Bedrock Agent IAM Role
+    const agentRole = new iam.Role(this, 'TestAgentRole', {
+      roleName: `${agentName}-execution-role-${this.region}`,
+      assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
+      description: `Execution role for Bedrock agent ${agentName} in ${this.region}`,
+      inlinePolicies: {
+        BedrockAgentPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'bedrock:InvokeModel',
+                'bedrock:GetInferenceProfile',
+                'bedrock:ListInferenceProfiles'
+              ],
+              resources: [
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
+                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`
+              ]
+            }),
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ['lambda:InvokeFunction'],
+              resources: [getCostDatasetFunction.functionArn]
+            })
+          ]
+        })
+      }
+    });
+
+    // Create Bedrock Agent - use inference profile for new agents
+    this.testAgent = new bedrock.CfnAgent(this, 'TestAgent', {
+      agentName: `${agentName}-${this.region}`,
+      description: `${agentDescription} in ${this.region}`,
+      agentResourceRoleArn: agentRole.roleArn,
+      foundationModel: 'us.anthropic.claude-3-haiku-20240307-v1:0', // Inference profile ID
+      instruction: agentInstructions,
+      idleSessionTtlInSeconds: 1800,
+      actionGroups: [
+        {
+          actionGroupName: 'cost-dataset-fetcher',
+          description: 'Fetches CostPerTenant dataset for analysis',
+          actionGroupExecutor: {
+            lambda: getCostDatasetFunction.functionArn
+          },
+          apiSchema: {
+            payload: JSON.stringify({
+              openapi: '3.0.0',
+              info: {
+                title: 'Cost Dataset API',
+                version: '1.0.0'
+              },
+              paths: {
+                '/getCostPerTenantDataset': {
+                  get: {
+                    summary: 'Get complete CostPerTenant dataset',
+                    description: 'Retrieves all tenant cost data for analysis',
+                    operationId: 'getCostPerTenantDataset',
+                    responses: {
+                      '200': {
+                        description: 'Dataset retrieved successfully',
+                        content: {
+                          'application/json': {
+                            schema: {
+                              type: 'object',
+                              properties: {
+                                dataset_size: { type: 'integer' },
+                                cost_per_tenant_data: {
+                                  type: 'array',
+                                  items: {
+                                    type: 'object',
+                                    properties: {
+                                      tenant_id: { type: 'string' },
+                                      month: { type: 'string' },
+                                      tier: { type: 'string' },
+                                      cost: { type: 'number' },
+                                      revenue: { type: 'number' },
+                                      margin: { type: 'number' },
+                                      margin_percentage: { type: 'number' }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            })
+          }
+        }
+      ]
+    });
+
+    // Create Agent Alias
+    this.testAgentAlias = new bedrock.CfnAgentAlias(this, 'TestAgentAlias', {
+      agentId: this.testAgent.attrAgentId,
+      agentAliasName: 'prod',
+      description: 'Production alias for test agent',
+    });
+
+    // Outputs
+    new cdk.CfnOutput(this, 'TestAgentId', {
+      value: this.testAgent.attrAgentId,
+      description: 'Test Agent ID',
+    });
+
+    new cdk.CfnOutput(this, 'TestAgentAliasId', {
+      value: this.testAgentAlias.attrAgentAliasId,
+      description: 'Test Agent Alias ID',
+    });
+  }
+}

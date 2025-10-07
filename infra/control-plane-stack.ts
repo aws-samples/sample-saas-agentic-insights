@@ -129,6 +129,7 @@ export class ControlPlaneStack extends cdk.Stack {
       environment: {
         // Environment variables will be set via deployment script or separate stack
         // ADVANCED_COST_ANALYSIS_AGENT_ID and ADVANCED_COST_ANALYSIS_AGENT_ALIAS_ID
+        // TEST_AGENT_ID and TEST_AGENT_ALIAS_ID will be set via deployment script
       },
     });
 
@@ -142,8 +143,12 @@ export class ControlPlaneStack extends cdk.Stack {
       effect: iam.Effect.ALLOW,
       actions: [
         'bedrock-agent-runtime:InvokeAgent',
+        'bedrock:InvokeAgent',
       ],
-      resources: ['*'], // Will be restricted to specific agent in deployment
+      resources: [
+        `arn:aws:bedrock:${this.region}:${this.account}:agent/*`,
+        `arn:aws:bedrock:${this.region}:${this.account}:agent-alias/*/*`,
+      ],
     }));
 
     this.eventBus.grantPutEventsTo(registrationFunction);

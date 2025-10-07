@@ -117,6 +117,64 @@ Once you have retrieved the historical cost dataset using the getHistoricalCostD
                 'body': json.dumps(response_body)
             }
         
+        # Handle simple-cost-analysis type with test agent
+        elif analysis_type == 'simple-cost-analysis':
+            bedrock_agent_runtime = boto3.client('bedrock-agent-runtime')
+            
+            # Get test agent IDs from environment variables
+            test_agent_id = os.environ.get('TEST_AGENT_ID')
+            test_agent_alias_id = os.environ.get('TEST_AGENT_ALIAS_ID')
+            
+            if not test_agent_id or not test_agent_alias_id:
+                return {
+                    'statusCode': 500,
+                    'headers': cors_headers,
+                    'body': json.dumps({'error': 'Test agent not configured'})
+                }
+            
+            # Simple prompt for test agent
+            prompt = "Please analyze the CostPerTenant dataset and provide your top 5 recommendations for improving our SaaS platform economics."
+            
+            try:
+                print(f"Invoking test agent: {test_agent_id}")
+                response = bedrock_agent_runtime.invoke_agent(
+                    agentId=test_agent_id,
+                    agentAliasId=test_agent_alias_id,
+                    sessionId=f"test-agent-session-{context.aws_request_id}",
+                    inputText=prompt
+                )
+                
+                # Process streaming response
+                result_text = ""
+                for event_chunk in response['completion']:
+                    if 'chunk' in event_chunk:
+                        chunk_data = event_chunk['chunk']
+                        if 'bytes' in chunk_data:
+                            decoded_text = chunk_data['bytes'].decode('utf-8')
+                            result_text += decoded_text
+                
+                response_body = {
+                    'success': True,
+                    'analysis': result_text,
+                    'analysis_type': analysis_type,
+                    'timestamp': context.aws_request_id,
+                    'agent': 'test-agent'
+                }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': cors_headers,
+                    'body': json.dumps(response_body)
+                }
+                
+            except Exception as e:
+                print(f"Test agent error: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': cors_headers,
+                    'body': json.dumps({'error': f'Test agent invocation failed: {str(e)}'})
+                }
+        
         # Default response for other types
         return {
             'statusCode': 200,

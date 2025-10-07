@@ -7,6 +7,7 @@ import { AIDescriptionStack } from './ai-description-stack';
 import { MetricsFrameworkStack } from './metrics-framework-stack';
 import { CostAnalysisAgentStack } from './cost-analysis-agent-stack';
 import { AdvancedCostAnalysisAgentStack } from './advanced-cost-analysis-agent-stack';
+import { TestAgentStack } from './test-agent-stack';
 
 const app = new cdk.App();
 
@@ -71,6 +72,15 @@ const advancedCostAnalysisAgentStack = new AdvancedCostAnalysisAgentStack(app, '
   },
 });
 
+// Test Agent Stack - simple agent for dataset exploration
+const testAgentStack = new TestAgentStack(app, 'AgenticInsightsTestAgent', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  },
+  costPerTenantTableName: metricsFrameworkStack.costPerTenantTable.tableName,
+});
+
 // Add dependencies
 metricsFrameworkStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(controlPlaneStack);
@@ -80,3 +90,4 @@ costAnalysisAgentStack.addDependency(metricsFrameworkStack);
 costAnalysisAgentStack.addDependency(controlPlaneStack);
 advancedCostAnalysisAgentStack.addDependency(metricsFrameworkStack);
 advancedCostAnalysisAgentStack.addDependency(controlPlaneStack);
+testAgentStack.addDependency(metricsFrameworkStack);

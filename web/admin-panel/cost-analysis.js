@@ -138,7 +138,7 @@ class CostAnalysisController {
                 throw new Error('INSIGHT_DASHBOARD_API_URL not configured in APP_CONFIG');
             }
             
-            // Call Insight Dashboard API for cost analysis
+            // Call Insight Dashboard API for simple cost analysis using test agent
             console.log('📡 Making API call to insight dashboard endpoint...');
             const response = await fetch(window.APP_CONFIG.INSIGHT_DASHBOARD_API_URL, {
                 method: 'POST',
@@ -146,7 +146,7 @@ class CostAnalysisController {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    analysis_type: 'cost-analysis'
+                    analysis_type: 'simple-cost-analysis'
                 })
             });
             
