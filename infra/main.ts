@@ -5,8 +5,8 @@ import { ControlPlaneStack } from './control-plane-stack';
 import { AppPlaneStack } from './app-plane-stack';
 import { AIDescriptionStack } from './ai-description-stack';
 import { MetricsFrameworkStack } from './metrics-framework-stack';
-import { CostAnalysisAgentStack } from './cost-analysis-agent-stack';
-import { AdvancedCostAnalysisAgentStack } from './advanced-cost-analysis-agent-stack';
+
+
 import { TestAgentStack } from './test-agent-stack';
 
 const app = new cdk.App();
@@ -52,25 +52,9 @@ const aiDescriptionStack = new AIDescriptionStack(app, 'AgenticInsightsAIDescrip
   authorizer: appPlaneStack.authorizer,
 });
 
-// Cost Analysis Agent Stack - handles AI-powered cost analysis
-const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsCostAnalysisAgent', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
-  },
-  metricsTableName: metricsFrameworkStack.metricsTable.tableName,
-  metricsAggregationTableName: metricsFrameworkStack.metricsAggregationTable.tableName,
-  controlPlaneApiId: controlPlaneStack.controlPlaneApi.restApiId,
-  controlPlaneApiRootResourceId: controlPlaneStack.controlPlaneApi.root.resourceId,
-});
 
-// Advanced Cost Analysis Agent Stack - handles advanced financial forecasting
-const advancedCostAnalysisAgentStack = new AdvancedCostAnalysisAgentStack(app, 'AgenticInsightsAdvancedCostAnalysisAgent', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
-  },
-});
+
+
 
 // Test Agent Stack - simple agent for dataset exploration
 const testAgentStack = new TestAgentStack(app, 'AgenticInsightsTestAgent', {
@@ -86,8 +70,6 @@ metricsFrameworkStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(metricsFrameworkStack);
 aiDescriptionStack.addDependency(appPlaneStack);
-costAnalysisAgentStack.addDependency(metricsFrameworkStack);
-costAnalysisAgentStack.addDependency(controlPlaneStack);
-advancedCostAnalysisAgentStack.addDependency(metricsFrameworkStack);
-advancedCostAnalysisAgentStack.addDependency(controlPlaneStack);
+
+
 testAgentStack.addDependency(metricsFrameworkStack);
