@@ -132,8 +132,46 @@ Once you have retrieved the historical cost dataset using the getHistoricalCostD
                     'body': json.dumps({'error': 'Test agent not configured'})
                 }
             
-            # Simple prompt for test agent
-            prompt = "Please analyze the CostPerTenant dataset and provide your top 5 recommendations for improving our SaaS platform economics."
+            return_format = """use JSON format for the response like this: 
+            {
+                "historical": [
+                    {
+                        "month": "YYYY-MM",
+                        "tier": "basic",
+                        ....
+                    }
+                ],
+                "forecast": [
+                    {
+                        "month": "YYYY-MM",
+                        "tier": "basic",
+                        ....
+                    }
+                ]
+                
+            } """
+
+
+            prompt = f"""
+            Refer to CostPerTenant dataset, analyze it and do the following. 
+            
+            1. Calculate the average cost per-tenant, per-month basis. 
+            2. Based on this dataset per-tier basis, forecast the cost per-tenant, per-month for the next 6 months from current month using Monte Carlo simulation. 
+            3. And then, return only these attributes [month | tier | cost | revenue | margin]. Add Basic tier values first and then Premium tier.
+            
+            Use {return_format} as the return JSON format. 
+            """
+
+            # Also, explore the historical cost-per-tenant values, and forecasted values, and provide TOP 5 actionable insights AND TOP 5 Recommendations for the SaaS provider to reduce costs and improve margins. Include specific dollar impact, numbers and data in each insight and recommendation. Each should not more than 300 characters 
+
+            # "recommendations": [
+            #         {
+            #             "recommendations 01"
+            #         },
+            #         ....
+            #     ]
+
+            
             
             try:
                 print(f"Invoking test agent: {test_agent_id}")
