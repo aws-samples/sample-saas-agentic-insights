@@ -1,0 +1,542 @@
+[
+  {
+    "tenant_id": "tenant_p_A",
+    "month": "2025-04",
+    "cost": 115.2,
+    "revenue": 99.0,
+    "margin": -16.2,
+    "margin_percentage": -16.36,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_A",
+    "month": "2025-05",
+    "cost": 42.8,
+    "revenue": 99.0,
+    "margin": 56.2,
+    "margin_percentage": 56.77,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_A",
+    "month": "2025-06",
+    "cost": 102.37063522741914,
+    "revenue": 99.0,
+    "margin": -3.370635227419143,
+    "margin_percentage": -3.4046820478981243,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_A",
+    "month": "2025-07",
+    "cost": 72.5,
+    "revenue": 99.0,
+    "margin": 26.5,
+    "margin_percentage": 26.77,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_A",
+    "month": "2025-08",
+    "cost": 89.6,
+    "revenue": 99.0,
+    "margin": 9.4,
+    "margin_percentage": 9.49,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_A",
+    "month": "2025-09",
+    "cost": 65.66,
+    "revenue": 99.0,
+    "margin": 33.34,
+    "margin_percentage": 33.68,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_B",
+    "month": "2025-04",
+    "cost": 108.9,
+    "revenue": 99.0,
+    "margin": -9.9,
+    "margin_percentage": -10.0,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_B",
+    "month": "2025-05",
+    "cost": 67.15,
+    "revenue": 99.0,
+    "margin": 31.85,
+    "margin_percentage": 32.17,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_B",
+    "month": "2025-06",
+    "cost": 51.9025641025641,
+    "revenue": 99.0,
+    "margin": 47.0974358974359,
+    "margin_percentage": 47.573167573167574,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_B",
+    "month": "2025-07",
+    "cost": 75.3,
+    "revenue": 99.0,
+    "margin": 23.7,
+    "margin_percentage": 23.94,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_B",
+    "month": "2025-08",
+    "cost": 51.8,
+    "revenue": 99.0,
+    "margin": 47.2,
+    "margin_percentage": 47.68,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_B",
+    "month": "2025-09",
+    "cost": 68.2,
+    "revenue": 99.0,
+    "margin": 30.8,
+    "margin_percentage": 31.11,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_C",
+    "month": "2025-04",
+    "cost": 117.4,
+    "revenue": 99.0,
+    "margin": -18.4,
+    "margin_percentage": -18.59,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_C",
+    "month": "2025-05",
+    "cost": 58.85,
+    "revenue": 99.0,
+    "margin": 40.15,
+    "margin_percentage": 40.56,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_C",
+    "month": "2025-06",
+    "cost": 133.7990722844994,
+    "revenue": 99.0,
+    "margin": -34.7990722844994,
+    "margin_percentage": -35.15057806515091,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_C",
+    "month": "2025-07",
+    "cost": 77.8,
+    "revenue": 99.0,
+    "margin": 21.2,
+    "margin_percentage": 21.41,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_C",
+    "month": "2025-08",
+    "cost": 118.75,
+    "revenue": 99.0,
+    "margin": -19.75,
+    "margin_percentage": -19.95,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_C",
+    "month": "2025-09",
+    "cost": 70.45,
+    "revenue": 99.0,
+    "margin": 28.55,
+    "margin_percentage": 28.84,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_D",
+    "month": "2025-04",
+    "cost": 112.3,
+    "revenue": 99.0,
+    "margin": -13.3,
+    "margin_percentage": -13.43,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_D",
+    "month": "2025-05",
+    "cost": 48.9,
+    "revenue": 99.0,
+    "margin": 50.1,
+    "margin_percentage": 50.61,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_D",
+    "month": "2025-06",
+    "cost": 122.25792423656745,
+    "revenue": 99.0,
+    "margin": -23.257924236567447,
+    "margin_percentage": -23.492852764209545,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_D",
+    "month": "2025-07",
+    "cost": 80.15,
+    "revenue": 99.0,
+    "margin": 18.85,
+    "margin_percentage": 19.04,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_D",
+    "month": "2025-08",
+    "cost": 107.25,
+    "revenue": 99.0,
+    "margin": -8.25,
+    "margin_percentage": -8.33,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_D",
+    "month": "2025-09",
+    "cost": 72.9,
+    "revenue": 99.0,
+    "margin": 26.1,
+    "margin_percentage": 26.36,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_E",
+    "month": "2025-04",
+    "cost": 119.5,
+    "revenue": 99.0,
+    "margin": -20.5,
+    "margin_percentage": -20.71,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_E",
+    "month": "2025-05",
+    "cost": 110.2,
+    "revenue": 99.0,
+    "margin": -11.2,
+    "margin_percentage": -11.31,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_E",
+    "month": "2025-06",
+    "cost": 95.71980414894988,
+    "revenue": 99.0,
+    "margin": 3.2801958510501237,
+    "margin_percentage": 3.3133291424748723,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_E",
+    "month": "2025-07",
+    "cost": 82.6,
+    "revenue": 99.0,
+    "margin": 16.4,
+    "margin_percentage": 16.57,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_E",
+    "month": "2025-08",
+    "cost": 105.4,
+    "revenue": 99.0,
+    "margin": -6.4,
+    "margin_percentage": -6.46,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_p_E",
+    "month": "2025-09",
+    "cost": 75.1,
+    "revenue": 99.0,
+    "margin": 23.9,
+    "margin_percentage": 24.14,
+    "tier": "premium"
+  },
+  {
+    "tenant_id": "tenant_b_A",
+    "month": "2025-04",
+    "cost": 28.5,
+    "revenue": 29.0,
+    "margin": 0.5,
+    "margin_percentage": 1.72,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_A",
+    "month": "2025-05",
+    "cost": 19.3,
+    "revenue": 29.0,
+    "margin": 9.7,
+    "margin_percentage": 33.45,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_A",
+    "month": "2025-06",
+    "cost": 34.8,
+    "revenue": 29.0,
+    "margin": -5.8,
+    "margin_percentage": -20.0,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_A",
+    "month": "2025-07",
+    "cost": 22.1,
+    "revenue": 29.0,
+    "margin": 6.9,
+    "margin_percentage": 23.79,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_A",
+    "month": "2025-08",
+    "cost": 22.20205662393162,
+    "revenue": 29.0,
+    "margin": 6.797943376068378,
+    "margin_percentage": 23.4411840554082,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_A",
+    "month": "2025-09",
+    "cost": 26.2,
+    "revenue": 29.0,
+    "margin": 2.8,
+    "margin_percentage": 9.66,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_B",
+    "month": "2025-04",
+    "cost": 35.8,
+    "revenue": 29.0,
+    "margin": -6.8,
+    "margin_percentage": -23.45,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_B",
+    "month": "2025-05",
+    "cost": 17.4,
+    "revenue": 29.0,
+    "margin": 11.6,
+    "margin_percentage": 40.0,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_B",
+    "month": "2025-06",
+    "cost": 21.2,
+    "revenue": 29.0,
+    "margin": 7.8,
+    "margin_percentage": 26.89655172413793,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_B",
+    "month": "2025-07",
+    "cost": 15.5,
+    "revenue": 29.0,
+    "margin": 13.5,
+    "margin_percentage": 46.55,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_B",
+    "month": "2025-08",
+    "cost": 20.436591880341883,
+    "revenue": 29.0,
+    "margin": 8.563408119658117,
+    "margin_percentage": 29.528993516062474,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_B",
+    "month": "2025-09",
+    "cost": 21.1,
+    "revenue": 29.0,
+    "margin": 7.9,
+    "margin_percentage": 27.24,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_C",
+    "month": "2025-04",
+    "cost": 23.8,
+    "revenue": 29.0,
+    "margin": 5.2,
+    "margin_percentage": 17.93103448275862,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_C",
+    "month": "2025-05",
+    "cost": 26.9,
+    "revenue": 29.0,
+    "margin": 2.1,
+    "margin_percentage": 7.24,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_C",
+    "month": "2025-06",
+    "cost": 52.4,
+    "revenue": 29.0,
+    "margin": -23.4,
+    "margin_percentage": -80.69,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_C",
+    "month": "2025-07",
+    "cost": 31.6,
+    "revenue": 29.0,
+    "margin": -2.6,
+    "margin_percentage": -8.97,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_C",
+    "month": "2025-08",
+    "cost": 31.457371794871793,
+    "revenue": 29.0,
+    "margin": -2.4573717948717935,
+    "margin_percentage": -8.473695844385496,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_C",
+    "month": "2025-09",
+    "cost": 37.5,
+    "revenue": 29.0,
+    "margin": -8.5,
+    "margin_percentage": -29.31,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_D",
+    "month": "2025-04",
+    "cost": 19.9,
+    "revenue": 29.0,
+    "margin": 9.1,
+    "margin_percentage": 31.38,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_D",
+    "month": "2025-05",
+    "cost": 31.8,
+    "revenue": 29.0,
+    "margin": -2.8,
+    "margin_percentage": -9.66,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_D",
+    "month": "2025-06",
+    "cost": 24.3,
+    "revenue": 29.0,
+    "margin": 4.7,
+    "margin_percentage": 16.21,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_D",
+    "month": "2025-07",
+    "cost": 25.5,
+    "revenue": 29.0,
+    "margin": 3.5,
+    "margin_percentage": 12.068965517241379,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_D",
+    "month": "2025-08",
+    "cost": 11.716266025641024,
+    "revenue": 29.0,
+    "margin": 17.283733974358974,
+    "margin_percentage": 59.599082670203366,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_D",
+    "month": "2025-09",
+    "cost": 44.5,
+    "revenue": 29.0,
+    "margin": -15.5,
+    "margin_percentage": -53.45,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_E",
+    "month": "2025-04",
+    "cost": 25.4,
+    "revenue": 29.0,
+    "margin": 3.6,
+    "margin_percentage": 12.41,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_E",
+    "month": "2025-05",
+    "cost": 26.9,
+    "revenue": 29.0,
+    "margin": 2.1,
+    "margin_percentage": 7.241379310344828,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_E",
+    "month": "2025-06",
+    "cost": 23.2,
+    "revenue": 29.0,
+    "margin": 5.8,
+    "margin_percentage": 20.0,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_E",
+    "month": "2025-07",
+    "cost": 49.1,
+    "revenue": 29.0,
+    "margin": -20.1,
+    "margin_percentage": -69.31,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_E",
+    "month": "2025-08",
+    "cost": 14.337713675213676,
+    "revenue": 29.0,
+    "margin": 14.662286324786324,
+    "margin_percentage": 50.55960801650456,
+    "tier": "basic"
+  },
+  {
+    "tenant_id": "tenant_b_E",
+    "month": "2025-09",
+    "cost": 52.2,
+    "revenue": 29.0,
+    "margin": -23.2,
+    "margin_percentage": -80.0,
+    "tier": "basic"
+  }
+]
