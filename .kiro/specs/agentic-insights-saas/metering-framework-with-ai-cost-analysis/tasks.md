@@ -38,7 +38,7 @@
   - Configure agent with system prompt optimized for SaaS cost analysis
   - Set up IAM roles with minimal required permissions for Bedrock and Lambda access
   - Deploy agent with production alias for stable endpoint
-  - Test agent deployment and basic invocation functionality
+  - Cost Analysis Agent deployment and basic invocation functionality
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 6. Implement Infrastructure Usage Action Group

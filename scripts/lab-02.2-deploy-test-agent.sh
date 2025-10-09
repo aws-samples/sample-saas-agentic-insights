@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Deploy Test Agent
-# This script deploys the test agent and updates the insight dashboard API with agent IDs
+# Deploy Cost Analysis Agent
+# This script deploys the Cost Analysis Agent and updates the insight dashboard API with agent IDs
 
 set -e
 
-echo "🤖 Deploying Test Agent..."
+echo "🤖 Deploying Cost Analysis Agent..."
 echo "================================"
 
 # Colors for output
@@ -21,24 +21,24 @@ print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-# Deploy test agent stack
-print_status "Deploying test agent stack..."
-cdk deploy AgenticInsightsTestAgent --require-approval never
+# Deploy Cost Analysis Agent stack
+print_status "Deploying Cost Analysis Agent stack..."
+cdk deploy AgenticInsightsCostAnalysisAgent --require-approval never
 
 # Get agent IDs from stack outputs
 print_status "Retrieving agent IDs..."
-TEST_AGENT_ID=$(aws cloudformation describe-stacks \
-    --stack-name AgenticInsightsTestAgent \
-    --query 'Stacks[0].Outputs[?OutputKey==`TestAgentId`].OutputValue' \
+COST_ANALYSIS_AGENT_ID=$(aws cloudformation describe-stacks \
+    --stack-name AgenticInsightsCostAnalysisAgent \
+    --query 'Stacks[0].Outputs[?OutputKey==`CostAnalysisAgentId`].OutputValue' \
     --output text)
 
-TEST_AGENT_ALIAS_ID=$(aws cloudformation describe-stacks \
-    --stack-name AgenticInsightsTestAgent \
-    --query 'Stacks[0].Outputs[?OutputKey==`TestAgentAliasId`].OutputValue' \
+COST_ANALYSIS_AGENT_ALIAS_ID=$(aws cloudformation describe-stacks \
+    --stack-name AgenticInsightsCostAnalysisAgent \
+    --query 'Stacks[0].Outputs[?OutputKey==`CostAnalysisAgentAliasId`].OutputValue' \
     --output text)
 
-print_status "Test Agent ID: $TEST_AGENT_ID"
-print_status "Test Agent Alias ID: $TEST_AGENT_ALIAS_ID"
+print_status "Cost Analysis Agent ID: $COST_ANALYSIS_AGENT_ID"
+print_status "Cost Analysis Agent Alias ID: $COST_ANALYSIS_AGENT_ALIAS_ID"
 
 # Get insight dashboard function name
 INSIGHT_FUNCTION_NAME=$(aws cloudformation describe-stacks \
@@ -59,8 +59,8 @@ print_status "Updating insight dashboard function: $INSIGHT_FUNCTION_NAME"
 # Update Lambda environment variables
 aws lambda update-function-configuration \
     --function-name "$INSIGHT_FUNCTION_NAME" \
-    --environment "Variables={TEST_AGENT_ID=$TEST_AGENT_ID,TEST_AGENT_ALIAS_ID=$TEST_AGENT_ALIAS_ID}" \
+    --environment "Variables={COST_ANALYSIS_AGENT_ID=$COST_ANALYSIS_AGENT_ID,COST_ANALYSIS_AGENT_ALIAS_ID=$COST_ANALYSIS_AGENT_ALIAS_ID}" \
     --no-cli-pager
 
-print_success "Test agent deployed and configured successfully!"
-print_status "You can now test with analysis_type='simple-cost-analysis'"
+print_success "Cost Analysis Agent deployed and configured successfully!"
+print_status "You can now use with analysis_type='simple-cost-analysis'"

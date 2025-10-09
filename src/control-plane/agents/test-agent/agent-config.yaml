@@ -1,3 +1,0 @@
-name: agentic-insights-test-agent
-description: Simple AI agent for exploring CostPerTenant dataset and providing recommendations
-model: us.anthropic.claude-3-haiku-20240307-v1:0

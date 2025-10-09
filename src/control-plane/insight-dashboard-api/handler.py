@@ -30,19 +30,19 @@ def handler(event, context):
         body = json.loads(event['body']) if event.get('body') else {}
         analysis_type = body.get('analysis_type', 'default')
         
-        # Handle simple-cost-analysis type with test agent
+        # Handle simple-cost-analysis type with Cost Analysis Agent
         if analysis_type == 'simple-cost-analysis':
             bedrock_agent_runtime = boto3.client('bedrock-agent-runtime')
             
-            # Get test agent IDs from environment variables
-            test_agent_id = os.environ.get('TEST_AGENT_ID')
-            test_agent_alias_id = os.environ.get('TEST_AGENT_ALIAS_ID')
+            # Get cost analysis agent IDs from environment variables
+            cost_analysis_agent_id = os.environ.get('COST_ANALYSIS_AGENT_ID')
+            cost_analysis_agent_alias_id = os.environ.get('COST_ANALYSIS_AGENT_ALIAS_ID')
             
-            if not test_agent_id or not test_agent_alias_id:
+            if not cost_analysis_agent_id or not cost_analysis_agent_alias_id:
                 return {
                     'statusCode': 500,
                     'headers': cors_headers,
-                    'body': json.dumps({'error': 'Test agent not configured'})
+                    'body': json.dumps({'error': 'Cost analysis agent not configured'})
                 }
             
             return_format = """use JSON format for the response like this: 
@@ -87,11 +87,11 @@ def handler(event, context):
             
             
             try:
-                print(f"Invoking test agent: {test_agent_id}")
+                print(f"Invoking cost analysis agent: {cost_analysis_agent_id}")
                 response = bedrock_agent_runtime.invoke_agent(
-                    agentId=test_agent_id,
-                    agentAliasId=test_agent_alias_id,
-                    sessionId=f"test-agent-session-{context.aws_request_id}",
+                    agentId=cost_analysis_agent_id,
+                    agentAliasId=cost_analysis_agent_alias_id,
+                    sessionId=f"cost-analysis-session-{context.aws_request_id}",
                     inputText=prompt
                 )
                 
@@ -109,7 +109,7 @@ def handler(event, context):
                     'analysis': result_text,
                     'analysis_type': analysis_type,
                     'timestamp': context.aws_request_id,
-                    'agent': 'test-agent'
+                    'agent': 'cost-analysis-agent'
                 }
                 
                 return {
@@ -119,11 +119,11 @@ def handler(event, context):
                 }
                 
             except Exception as e:
-                print(f"Test agent error: {str(e)}")
+                print(f"Cost Analysis Agent error: {str(e)}")
                 return {
                     'statusCode': 500,
                     'headers': cors_headers,
-                    'body': json.dumps({'error': f'Test agent invocation failed: {str(e)}'})
+                    'body': json.dumps({'error': f'Cost Analysis Agent invocation failed: {str(e)}'})
                 }
         
         # Default response for other types

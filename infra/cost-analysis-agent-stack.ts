@@ -6,26 +6,26 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
-interface TestAgentStackProps extends cdk.StackProps {
+interface CostAnalysisAgentStackProps extends cdk.StackProps {
   costPerTenantTableName: string;
 }
 
-export class TestAgentStack extends cdk.Stack {
-  public readonly testAgent: bedrock.CfnAgent;
-  public readonly testAgentAlias: bedrock.CfnAgentAlias;
+export class CostAnalysisAgentStack extends cdk.Stack {
+  public readonly costAnalysisAgent: bedrock.CfnAgent;
+  public readonly costAnalysisAgentAlias: bedrock.CfnAgentAlias;
 
-  constructor(scope: Construct, id: string, props: TestAgentStackProps) {
+  constructor(scope: Construct, id: string, props: CostAnalysisAgentStackProps) {
     super(scope, id, props);
 
     // Load agent configuration
-    const agentConfigPath = path.join(__dirname, '../src/control-plane/agents/test-agent/agent-config.yaml');
-    const agentInstructionsPath = path.join(__dirname, '../src/control-plane/agents/test-agent/instructions.txt');
+    const agentConfigPath = path.join(__dirname, '../src/control-plane/agents/cost-analysis-agent/agent-config.yaml');
+    const agentInstructionsPath = path.join(__dirname, '../src/control-plane/agents/cost-analysis-agent/instructions.txt');
     
     // Parse agent config
     const agentConfigContent = fs.readFileSync(agentConfigPath, 'utf8');
-    const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-test-agent';
+    const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-cost-analysis-agent';
     const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'anthropic.claude-3-haiku-20240307-v1:0';
-    const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'Simple AI agent for exploring CostPerTenant dataset';
+    const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'AI agent for cost analysis and financial insights';
     
     // Load agent instructions
     const agentInstructions = fs.readFileSync(agentInstructionsPath, 'utf8').trim();
@@ -34,7 +34,7 @@ export class TestAgentStack extends cdk.Stack {
     const getCostDatasetFunction = new lambda.Function(this, 'GetCostDatasetFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'get_cost_dataset.handler',
-      code: lambda.Code.fromAsset('src/control-plane/agents/test-agent/action-groups'),
+      code: lambda.Code.fromAsset('src/control-plane/agents/cost-analysis-agent/action-groups'),
       timeout: cdk.Duration.seconds(60),
       environment: {
         COST_PER_TENANT_TABLE_NAME: props.costPerTenantTableName,
@@ -53,7 +53,7 @@ export class TestAgentStack extends cdk.Stack {
     }));
 
     // Bedrock Agent IAM Role
-    const agentRole = new iam.Role(this, 'TestAgentRole', {
+    const agentRole = new iam.Role(this, 'CostAnalysisAgentRole', {
       roleName: `${agentName}-execution-role-${this.region}`,
       assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
       description: `Execution role for Bedrock agent ${agentName} in ${this.region}`,
@@ -83,7 +83,7 @@ export class TestAgentStack extends cdk.Stack {
     });
 
     // Create Bedrock Agent - use inference profile for new agents
-    this.testAgent = new bedrock.CfnAgent(this, 'TestAgent', {
+    this.costAnalysisAgent = new bedrock.CfnAgent(this, 'CostAnalysisAgent', {
       agentName: `${agentName}-${this.region}`,
       description: `${agentDescription} in ${this.region}`,
       agentResourceRoleArn: agentRole.roleArn,
@@ -150,21 +150,21 @@ export class TestAgentStack extends cdk.Stack {
     });
 
     // Create Agent Alias
-    this.testAgentAlias = new bedrock.CfnAgentAlias(this, 'TestAgentAlias', {
-      agentId: this.testAgent.attrAgentId,
+    this.costAnalysisAgentAlias = new bedrock.CfnAgentAlias(this, 'CostAnalysisAgentAlias', {
+      agentId: this.costAnalysisAgent.attrAgentId,
       agentAliasName: 'prod',
-      description: 'Production alias for test agent',
+      description: 'Production alias for cost analysis agent',
     });
 
     // Outputs
-    new cdk.CfnOutput(this, 'TestAgentId', {
-      value: this.testAgent.attrAgentId,
-      description: 'Test Agent ID',
+    new cdk.CfnOutput(this, 'CostAnalysisAgentId', {
+      value: this.costAnalysisAgent.attrAgentId,
+      description: 'Cost Analysis Agent ID',
     });
 
-    new cdk.CfnOutput(this, 'TestAgentAliasId', {
-      value: this.testAgentAlias.attrAgentAliasId,
-      description: 'Test Agent Alias ID',
+    new cdk.CfnOutput(this, 'CostAnalysisAgentAliasId', {
+      value: this.costAnalysisAgentAlias.attrAgentAliasId,
+      description: 'Cost Analysis Agent Alias ID',
     });
   }
 }

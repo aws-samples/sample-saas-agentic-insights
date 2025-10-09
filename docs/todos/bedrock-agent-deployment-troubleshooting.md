@@ -1,12 +1,12 @@
 # Bedrock Agent Deployment Troubleshooting
 
 ## Issue Summary
-During test-agent deployment in us-east-2, encountered model validation error that was resolved by deleting and recreating the agent.
+During cost-analysis-agent deployment in us-east-2, encountered model validation error that was resolved by deleting and recreating the agent.
 
 ## Timeline
 - **Working Agent**: Product description agent (ZZQXX1QVQN) created Sept 13, 2025 - works perfectly
-- **Failed Agent**: Test agent (SYACXCFUQO) created Oct 6, 2025 - model validation error
-- **Working Agent**: Test agent (VABRFMUZZK) created Oct 6, 2025 (after deletion) - works perfectly
+- **Failed Agent**: Cost analysis agent (SYACXCFUQO) created Oct 6, 2025 - model validation error
+- **Working Agent**: Cost analysis agent (VABRFMUZZK) created Oct 6, 2025 (after deletion) - works perfectly
 
 ## Error Details
 ```
@@ -57,8 +57,8 @@ curl -X POST <API_URL>/insight-dashboard \
 #### Step 4: If Model Validation Error Occurs
 ```bash
 # Nuclear option - delete and recreate
-cdk destroy AgenticInsightsTestAgent --force
-./scripts/deploy-test-agent.sh
+cdk destroy AgenticInsightsCostAnalysisAgent --force
+./scripts/deploy-cost-analysis-agent.sh
 ```
 
 #### Step 5: Manual Preparation (Last Resort)
@@ -83,7 +83,7 @@ aws bedrock-agent prepare-agent --region <region> --agent-id <AGENT_ID>
 ### ✅ Test After Deployment
 Consider adding simple test to deployment script:
 ```bash
-# Optional: Test agent after deployment
+# Optional: Cost Analysis Agent after deployment
 print_status "Testing agent invocation..."
 curl -s -X POST $API_URL/insight-dashboard \
   -H "Content-Type: application/json" \
@@ -113,9 +113,9 @@ status: ACTIVE
 - [ ] Document region-specific model ID variations if found
 
 ## Related Files
-- `scripts/deploy-test-agent.sh` - Deployment script
-- `infra/test-agent-stack.ts` - CDK infrastructure
-- `src/control-plane/agents/test-agent/` - Agent configuration
+- `scripts/deploy-cost-analysis-agent.sh` - Deployment script
+- `infra/cost-analysis-agent-stack.ts` - CDK infrastructure
+- `src/control-plane/agents/cost-analysis-agent/` - Agent configuration
 - `src/control-plane/insight-dashboard-api/handler.py` - API integration
 
 ---
