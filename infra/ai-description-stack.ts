@@ -68,6 +68,36 @@ export class AIDescriptionStack extends cdk.Stack {
       foundationModel: agentModel,
       instruction: agentInstructions,
       idleSessionTtlInSeconds: 1800,
+      // Explicitly set to not use any action groups or knowledge bases
+      actionGroups: [],
+      knowledgeBases: [],
+      // Override the orchestration prompt to remove function-calling expectations
+      promptOverrideConfiguration: {
+        promptConfigurations: [
+          {
+            promptType: 'ORCHESTRATION',
+            promptCreationMode: 'OVERRIDDEN',
+            promptState: 'ENABLED',
+            basePromptTemplate: `{
+              "anthropic_version": "bedrock-2023-05-31",
+              "system": "$instruction$",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "$question$"
+                }
+              ]
+            }`,
+            inferenceConfiguration: {
+              temperature: 0.7,
+              topP: 0.9,
+              topK: 250,
+              maximumLength: 300,
+              stopSequences: []
+            }
+          }
+        ]
+      }
     });
 
     // Create Agent Alias

@@ -52,10 +52,6 @@ const aiDescriptionStack = new AIDescriptionStack(app, 'AgenticInsightsAIDescrip
   authorizer: appPlaneStack.authorizer,
 });
 
-
-
-
-
 // Cost Analysis Agent Stack - simple agent for dataset exploration
 const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsCostAnalysisAgent', {
   env: {
@@ -70,6 +66,4 @@ metricsFrameworkStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(metricsFrameworkStack);
 aiDescriptionStack.addDependency(appPlaneStack);
-
-
 costAnalysisAgentStack.addDependency(metricsFrameworkStack);

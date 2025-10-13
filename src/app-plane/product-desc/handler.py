@@ -142,19 +142,16 @@ def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_
                 'body': json.dumps({'error': 'AI service not configured', 'status': 'error'})
             }
         
-        # Call Bedrock agent
+        # Call Bedrock agent with fixed orchestration prompt
         start_time = time.time()
         
         try:
             response = bedrock_agent_runtime.invoke_agent(
                 agentId=BEDROCK_AGENT_ID,
                 agentAliasId=BEDROCK_AGENT_ALIAS_ID,
-                sessionId=f"{tenant_id}-{int(time.time())}",  # Stateless session
+                sessionId=f"{tenant_id}-{int(time.time())}",
                 inputText=f"Generate a product description for: {product_name}. Key features: {short_description}"
             )
-            
-            # Log detailed response object
-            print(f"BEDROCK_RESPONSE_DETAILS: {json.dumps(response, indent=2, default=str)}")
             
             # Process streaming response
             generated_description = ""
@@ -166,7 +163,6 @@ def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_
                         chunk_text = chunk_data['bytes'].decode('utf-8')
                         generated_description += chunk_text
             
-            # Clean up the generated description
             generated_description = generated_description.strip()
             
             if not generated_description:
