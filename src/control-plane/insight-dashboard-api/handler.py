@@ -45,7 +45,7 @@ def handler(event, context):
                     'body': json.dumps({'error': 'Cost analysis agent not configured'})
                 }
             
-            return_format = """use JSON format for the response like this: 
+            return_format = """
             {
                 "trends": [
                     {trend 1}, {trend 2}, ...
@@ -56,57 +56,30 @@ def handler(event, context):
                 "optimizations": [
                     {optimization 1}, {optimization 2}, ...
                 ],
-                "historical-cost-per-tenant": [
+                "cost_per_tenant_averages": [
                     {"month": "YYYY-MM", "tier": "basic | premium", "cost": xx.x, "revenue": xx.x, "margin": xx.x},
                     ...include all the cost_per_tenant_averages data you retrieved...
+                ],
+                "cost_per_tenant_predictions": [
+                    {"month": "YYYY-MM", "tier": "basic | premium", "predicted_cost": xx.x, "confidence_low": xx.x, "confidence_high": xx.x, "revenue": xx.x, "predicted_margin": xx.x},
+                    ...include all the cost_per_tenant_predictions data you retrieved...
                 ]
                 
             } """
-
-# IMPORTANT: Always structure your response as JSON with the following format:
-# {
-#   "trend_analysis": "Your detailed trend analysis of cost patterns over the last 6 months",
-#   "predictive_analysis": "Your forecast and predictions for the next 6 months",
-#   "recommendations": ["List of actionable cost optimization recommendations"],
-#   "data": {
-#     "historical_trends": [
-#       {"month": "2025-04", "tier": "basic", "cost": 26.7, "revenue": 29.0, "margin": 2.3, "trend": "stable"}
-#     ],
-#     "forecasted_costs": [
-#       {"month": "2025-10", "tier": "basic", "predicted_cost": 25.2, "confidence": "high"}
-#     ]
-#   }
-# }
 
             prompt = f"""
             Analyze the "average cost per-tenant, per-month dataset" and provide:
             
             1. TREND ANALYSIS: Examine “average cost and margin per-tenant, per-month dataset” over the last 6 months for both Basic and Premium tiers and Identify most important 5 cost per-tenant and margin trends, variations and important deep insights. 
             
-            2. PREDICTIVE ANALYSIS: Examine “predicted cost and margin per-tenant, per-month dataset” over next 6 months and Forecast trends, patterns,  tier-specific growth and deep insights. 
+            2. PREDICTIVE ANALYSIS: Examine “predicted cost and margin per-tenant, per-month dataset” over next 6 months and Forecast most important 5 trends, patterns, tier-specific growth and deep insights. 
             
-            3. COST RECOMMENDATIONS: Based on above TREND ANALYSIS and PREDICTIVE ANALYSIS, identify cost optimization opportunities and revenue/margin improvement recommendations. Do NOT provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Be strongly specific about data-driven analysis for recommendations. 
+            3. COST RECOMMENDATIONS: Based on above TREND ANALYSIS and PREDICTIVE ANALYSIS, identify most critical and important 5 cost optimization opportunities and revenue/margin improvement recommendations. Do NOT provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Be strongly specific about data-driven analysis for recommendations. 
 
             In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and should have not exceed more than 100 characters. 
-
-            4. HISTORICAL COST PER TENANT : Include the complete cost_per_tenant_averages dataset you retrieved in the 'dataset' section.
-
-            
             
             STRICTLY use this return JSON format : {return_format}  
-
             """
-
-            # Also, explore the historical cost-per-tenant values, and forecasted values, and provide TOP 5 actionable insights AND TOP 5 Recommendations for the SaaS provider to reduce costs and improve margins. Include specific dollar impact, numbers and data in each insight and recommendation. Each should not more than 300 characters 
-
-            # "recommendations": [
-            #         {
-            #             "recommendations 01"
-            #         },
-            #         ....
-            #     ]
-
-            
             
             try:
                 print(f"Invoking cost analysis agent: {cost_analysis_agent_id}")
