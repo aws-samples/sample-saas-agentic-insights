@@ -2,13 +2,14 @@ import json
 import boto3
 import os
 from decimal import Decimal
+from collections import defaultdict
 
 def handler(event, context):
     """
     Action Group: cost-dataset-fetcher
     Action: getCostPerTenantDataset
     
-    Fetches complete CostPerTenant dataset for agent analysis
+    Fetches CostPerTenant dataset and calculates averages per month per tier
     """
     
     try:
@@ -25,26 +26,47 @@ def handler(event, context):
             response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
             items.extend(response['Items'])
         
-        # Format dataset for agent (exclude updated_at)
-        dataset = []
+        # Group data by month and tier for averaging
+        grouped = defaultdict(lambda: {'costs': [], 'revenues': [], 'margins': []})
+        
         for item in items:
-            record = {
-                'tenant_id': item.get('tenant_id', ''),
-                'month': item.get('month', ''),
-                'tier': item.get('tier', ''),
-                'cost': float(item.get('cost', 0)),
-                'revenue': float(item.get('revenue', 0)),
-                'margin': float(item.get('margin', 0)),
-                'margin_percentage': float(item.get('margin_percentage', 0))
-            }
-            dataset.append(record)
+            month = item.get('month', '')
+            tier = item.get('tier', '')
+            cost = float(item.get('cost', 0))
+            revenue = float(item.get('revenue', 0))
+            margin = float(item.get('margin', 0))
+            
+            key = (month, tier)
+            grouped[key]['costs'].append(cost)
+            grouped[key]['revenues'].append(revenue)
+            grouped[key]['margins'].append(margin)
+        
+        # Calculate averages per month per tier
+        averaged_data = []
+        for (month, tier), values in grouped.items():
+            avg_cost = sum(values['costs']) / len(values['costs'])
+            avg_revenue = sum(values['revenues']) / len(values['revenues'])
+            avg_margin = sum(values['margins']) / len(values['margins'])
+            
+            averaged_data.append({
+                'month': month,
+                'tier': tier,
+                'cost': round(avg_cost, 1),
+                'revenue': round(avg_revenue, 1),
+                'margin': round(avg_margin, 1)
+            })
+        
+        # Sort by month and tier
+        averaged_data.sort(key=lambda x: (x['month'], x['tier']))
         
         result = {
-            'dataset_size': len(dataset),
-            'cost_per_tenant_data': dataset
+            'total_records': len(items),
+            'cost_per_tenant_averages': averaged_data
         }
         
-        print(f"DEBUG: Returning dataset with {len(dataset)} records")
+        print(f"DEBUG: Processed {len(items)} records into {len(averaged_data)} averaged records")
+        print("DEBUG: Averaged Dataset JSON:")
+        print(json.dumps(averaged_data, indent=2))
         
         return {
             'messageVersion': '1.0',
@@ -80,6 +102,12 @@ def handler(event, context):
                 }
             }
         }
+
+def decimal_serializer(obj):
+    """JSON serializer for Decimal objects"""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 def decimal_serializer(obj):
     """JSON serializer for Decimal objects"""
