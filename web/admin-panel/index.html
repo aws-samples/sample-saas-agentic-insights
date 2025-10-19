@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
     <!-- Login Modal -->
     <div id="login-modal" class="modal">
         <div class="modal-content">
@@ -29,36 +28,14 @@
         </div>
     </div>
 
-    <!-- Scripts (moved outside hidden div) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#8B5CF6',
-                        secondary: '#06B6D4'
-                    }
-                }
-            }
-        }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-
-    <!-- Admin Dashboard (Modern UI starts here) -->
+    <!-- Admin Dashboard -->
     <div id="admin-dashboard" class="admin-dashboard" style="display: none;">
         <div class="dark bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen">
-            <!-- Main Application -->
             <div id="app" class="flex h-screen">
-                
                 <!-- Left Sidebar Navigation -->
                 <nav id="sidebar" class="w-64 bg-gray-800/50 backdrop-blur-sm border-r border-gray-700/50">
                     <div class="p-6">
                         <h2 class="text-xl font-bold text-white mb-8">🔧 SaaS Admin</h2>
-                        
-                        <!-- Navigation Menu -->
                         <ul class="space-y-2" id="nav-menu">
                             <li>
                                 <a href="#" data-page="dashboard" class="nav-item active flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-all">
@@ -86,8 +63,6 @@
                                 </a>
                             </li>
                         </ul>
-                        
-                        <!-- Logout Button -->
                         <div class="mt-8 pt-8 border-t border-gray-700/50">
                             <button id="logout-btn" class="w-full flex items-center p-3 rounded-lg hover:bg-red-600/20 text-red-400 hover:text-red-300 transition-all">
                                 <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
@@ -108,12 +83,6 @@
             </div>
         </div>
     </div>
-        <main class="flex-1 overflow-auto">
-            <div id="page-content" class="p-8">
-                <!-- Dynamic content loaded here -->
-            </div>
-        </main>
-    </div>
     
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
@@ -123,8 +92,12 @@
         </div>
     </div>
     
-    <!-- Scripts -->
+    <!-- External Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{primary:'#8B5CF6',secondary:'#06B6D4'}}}}</script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Application Scripts -->
     <script src="config.js"></script>
     <script src="navigation.js"></script>
     <script src="cost-analysis.js"></script>
