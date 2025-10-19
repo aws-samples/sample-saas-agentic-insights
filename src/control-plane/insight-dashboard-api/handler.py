@@ -53,8 +53,8 @@ def handler(event, context):
                 "predictions": [
                     {prediction 1}, {prediction 2}, ...
                 ],
-                "optimizations": [
-                    {optimization 1}, {optimization 2}, ...
+                "recommendations": [
+                    {recommendation 1}, {recommendation 2}, ...
                 ],
                 "cost_per_tenant_averages": [
                     {"month": "YYYY-MM", "tier": "basic | premium", "cost": xx.x, "revenue": xx.x, "margin": xx.x},
@@ -74,7 +74,7 @@ def handler(event, context):
             
             2. PREDICTIVE ANALYSIS: Examine “predicted cost and margin per-tenant, per-month dataset” over next 6 months and Forecast most important 5 trends, patterns, tier-specific growth and deep insights. 
             
-            3. COST RECOMMENDATIONS: Based on above TREND ANALYSIS and PREDICTIVE ANALYSIS, identify most critical and important 5 cost optimization opportunities and revenue/margin improvement recommendations. Do NOT provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Be strongly specific about data-driven analysis for recommendations. 
+            3. RECOMMENDATIONS: Refer to the TREND ANALYSIS, PREDICTIVE ANALYSIS and the cost per-tenant averages and cost per-tenant predictions DATASETS, and then identify most critical and important 5 actionable cost/infrastructure optimization action items for the SaaS provider to improve the revenue/margin. Do NOT just provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Dive deeper, be specific and use data-driven analysis to provide recommendations. I need to see dollar values, % values, numbers in these recommendations to convince the SaaS provider. 
 
             In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and each item MUST NOT exceed more than 100 characters in size including space. 
             
