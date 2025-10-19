@@ -74,6 +74,7 @@ class CostAnalysisController {
     
     async loadInsightData() {
         try {
+            this.showLoading();
             console.log('Loading insight data from API...');
             const response = await fetch(`${window.APP_CONFIG.CONTROL_PLANE_API_URL}/insight-dashboard`, {
                 method: 'POST',
@@ -121,6 +122,22 @@ class CostAnalysisController {
         } catch (error) {
             console.error('Error loading insight data:', error);
             this.showError(`Failed to load AI insights: ${error.message}`);
+        } finally {
+            this.hideLoading();
+        }
+    }
+    
+    showLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+    }
+    
+    hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
         }
     }
     
@@ -328,10 +345,10 @@ class CostAnalysisController {
         const container = document.getElementById('cost-analysis-container');
         if (container) {
             container.innerHTML = `
-                <div class="error-container">
-                    <h3>Error Loading Data</h3>
-                    <p>${message}</p>
-                    <button onclick="window.CostAnalysisController.loadInsightData()">Retry</button>
+                <div class="error-container" style="color: white;">
+                    <h3 style="color: #EF4444;">Error Loading Data</h3>
+                    <p style="color: white;">${message}</p>
+                    <button onclick="window.CostAnalysisController.loadInsightData()" style="background: #EF4444; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer;">Retry</button>
                 </div>
             `;
         }
