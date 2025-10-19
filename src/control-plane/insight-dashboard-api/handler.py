@@ -76,7 +76,7 @@ def handler(event, context):
             
             3. COST RECOMMENDATIONS: Based on above TREND ANALYSIS and PREDICTIVE ANALYSIS, identify most critical and important 5 cost optimization opportunities and revenue/margin improvement recommendations. Do NOT provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Be strongly specific about data-driven analysis for recommendations. 
 
-            In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and should have not exceed more than 100 characters. 
+            In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and each item MUST NOT exceed more than 100 characters in size including space. 
             
             STRICTLY use this return JSON format : {return_format}  
             """
