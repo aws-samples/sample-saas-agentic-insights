@@ -11,6 +11,9 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Construct } from 'constructs';
 
 interface AppPlaneStackProps extends cdk.StackProps {
@@ -22,6 +25,8 @@ interface AppPlaneStackProps extends cdk.StackProps {
 export class AppPlaneStack extends cdk.Stack {
   public readonly appPlaneApi: apigateway.RestApi;
   public readonly authorizer: apigateway.TokenAuthorizer;
+  public bedrockAgent: bedrock.CfnAgent;
+  public bedrockAgentAlias: bedrock.CfnAgentAlias;
 
   constructor(scope: Construct, id: string, props: AppPlaneStackProps) {
     super(scope, id, props);
@@ -230,7 +235,15 @@ export class AppPlaneStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key', 'X-Amz-Security-Token', 'tenant-id', 'tier-name'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization', 
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+          'tenant-id',
+          'tier-name'
+        ],
       },
     });
 
@@ -273,6 +286,7 @@ export class AppPlaneStack extends cdk.Stack {
     const basicProductsResource = basicResource.addResource('products');
     basicProductsResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
     basicProductsResource.addMethod('POST', productIntegration, { authorizer: this.authorizer });
+    
     const basicProductIdResource = basicProductsResource.addResource('{product_id}');
     basicProductIdResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
     basicProductIdResource.addMethod('PUT', productIntegration, { authorizer: this.authorizer });
@@ -287,6 +301,7 @@ export class AppPlaneStack extends cdk.Stack {
     const premiumProductsResource = premiumResource.addResource('products');
     premiumProductsResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
     premiumProductsResource.addMethod('POST', productIntegration, { authorizer: this.authorizer });
+    
     const premiumProductIdResource = premiumProductsResource.addResource('{product_id}');
     premiumProductIdResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
     premiumProductIdResource.addMethod('PUT', productIntegration, { authorizer: this.authorizer });
@@ -300,6 +315,7 @@ export class AppPlaneStack extends cdk.Stack {
     const userResource = this.appPlaneApi.root.addResource('user');
     userResource.addMethod('GET', userIntegration, { authorizer: this.authorizer });
     userResource.addMethod('POST', userIntegration, { authorizer: this.authorizer });
+    
     const userIdResource = userResource.addResource('{user_id}');
     userIdResource.addMethod('PUT', userIntegration, { authorizer: this.authorizer });
     userIdResource.addMethod('DELETE', userIntegration, { authorizer: this.authorizer });
@@ -448,6 +464,9 @@ export class AppPlaneStack extends cdk.Stack {
       targets: [new targets.LambdaFunction(userCreationFunction)],
     });
 
+    // AI Product Description Components
+    this.addAIDescriptionComponents();
+
     // Outputs
     new cdk.CfnOutput(this, 'AppPlaneApiUrl', {
       value: this.appPlaneApi.url,
@@ -477,6 +496,160 @@ export class AppPlaneStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'PremiumTierUserPoolId', {
       value: premiumTierUserPool.userPoolId,
       description: 'Premium Tier User Pool ID',
+    });
+  }
+
+  private addAIDescriptionComponents() {
+    // Load agent configuration
+    const agentConfigPath = path.join(__dirname, '../src/app-plane/agents/product-desc/agent-config.yaml');
+    const agentInstructionsPath = path.join(__dirname, '../src/app-plane/agents/product-desc/instructions.txt');
+    
+    // Parse agent config
+    const agentConfigContent = fs.readFileSync(agentConfigPath, 'utf8');
+    const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-product-desc-agent';
+    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'us.anthropic.claude-3-haiku-20240307-v1:0';
+    const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'AI agent for generating e-commerce product descriptions';
+    
+    // Load agent instructions
+    const agentInstructions = fs.readFileSync(agentInstructionsPath, 'utf8').trim();
+
+    // Create IAM role for Bedrock agent
+    const bedrockAgentRole = new iam.Role(this, 'BedrockAgentRole', {
+      roleName: `${agentName}-execution-role-${this.region}`,
+      assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
+      description: `Execution role for Bedrock agent ${agentName} in ${this.region}`,
+      inlinePolicies: {
+        BedrockAgentPolicy: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'bedrock:InvokeModel',
+                'bedrock:GetInferenceProfile',
+                'bedrock:ListInferenceProfiles'
+              ],
+              resources: [
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
+                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`
+              ]
+            })
+          ]
+        })
+      }
+    });
+
+    // Create Bedrock Agent
+    this.bedrockAgent = new bedrock.CfnAgent(this, 'BedrockAgent', {
+      agentName: `${agentName}-${this.region}`,
+      description: `${agentDescription} in ${this.region}`,
+      agentResourceRoleArn: bedrockAgentRole.roleArn,
+      foundationModel: agentModel,
+      instruction: agentInstructions,
+      idleSessionTtlInSeconds: 1800,
+      actionGroups: [],
+      knowledgeBases: [],
+      promptOverrideConfiguration: {
+        promptConfigurations: [
+          {
+            promptType: 'ORCHESTRATION',
+            promptCreationMode: 'OVERRIDDEN',
+            promptState: 'ENABLED',
+            basePromptTemplate: `{
+              "anthropic_version": "bedrock-2023-05-31",
+              "system": "$instruction$",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "$question$"
+                }
+              ]
+            }`,
+            inferenceConfiguration: {
+              temperature: 0.7,
+              topP: 0.9,
+              topK: 250,
+              maximumLength: 300,
+              stopSequences: []
+            }
+          }
+        ]
+      }
+    });
+
+    // Create Agent Alias
+    this.bedrockAgentAlias = new bedrock.CfnAgentAlias(this, 'BedrockAgentAlias', {
+      agentId: this.bedrockAgent.attrAgentId,
+      agentAliasName: 'prod',
+      description: 'Production alias for the agent',
+    });
+
+    // Product Description Service Lambda
+    const productDescFunction = new lambda.Function(this, 'ProductDescFunction', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/app-plane/product-desc'),
+      environment: {
+        BEDROCK_AGENT_ID: this.bedrockAgent.attrAgentId,
+        BEDROCK_AGENT_ALIAS_ID: this.bedrockAgentAlias.attrAgentAliasId,
+        CLAUDE_INPUT_TOKEN_PRICE: '0.00025',
+        CLAUDE_OUTPUT_TOKEN_PRICE: '0.00125',
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      description: 'AI Product Description Generator using Bedrock Agent',
+    });
+
+    // CloudWatch Log Group
+    new logs.LogGroup(this, 'ProductDescLogGroup', {
+      logGroupName: `/aws/lambda/${productDescFunction.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // IAM permissions for Bedrock agent invocation
+    productDescFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock-agent-runtime:InvokeAgent',
+        'bedrock:InvokeAgent',
+        'bedrock:InvokeModel',
+      ],
+      resources: [
+        this.bedrockAgent.attrAgentArn,
+        `arn:aws:bedrock:${this.region}:${this.account}:agent-alias/${this.bedrockAgent.attrAgentId}/${this.bedrockAgentAlias.attrAgentAliasId}`,
+        `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
+      ],
+    }));
+
+    // Create AI resource
+    const aiResource = this.appPlaneApi.root.addResource('ai');
+    const generateDescResource = aiResource.addResource('generate-description');
+
+    // Lambda integration
+    const productDescIntegration = new apigateway.LambdaIntegration(productDescFunction, {
+      requestTemplates: { 'application/json': '{ "statusCode": "200" }' },
+      proxy: true,
+    });
+
+    // Add POST method with authorizer
+    generateDescResource.addMethod('POST', productDescIntegration, {
+      authorizer: this.authorizer
+    });
+
+    // Add AI outputs
+    new cdk.CfnOutput(this, 'AIDescriptionEndpoint', {
+      value: `https://${this.appPlaneApi.restApiId}.execute-api.${this.region}.amazonaws.com/prod/ai/generate-description`,
+      description: 'AI Product Description Generation Endpoint',
+    });
+
+    new cdk.CfnOutput(this, 'BedrockAgentId', {
+      value: this.bedrockAgent.attrAgentId,
+      description: 'Bedrock Agent ID for product description generation',
+    });
+
+    new cdk.CfnOutput(this, 'BedrockAgentAliasId', {
+      value: this.bedrockAgentAlias.attrAgentAliasId,
+      description: 'Bedrock Agent Alias ID',
     });
   }
 }

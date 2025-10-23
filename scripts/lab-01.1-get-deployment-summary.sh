@@ -16,16 +16,6 @@ AWS_REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
 AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "")
 
 # Get CloudFormation outputs
-CONTROL_PLANE_API=$(aws cloudformation describe-stacks \
-    --stack-name AgenticInsightsControlPlane \
-    --query 'Stacks[0].Outputs[?OutputKey==`ControlPlaneApiUrl`].OutputValue' \
-    --output text 2>/dev/null || echo "")
-
-APP_PLANE_API=$(aws cloudformation describe-stacks \
-    --stack-name AgenticInsightsAppPlane \
-    --query 'Stacks[0].Outputs[?OutputKey==`AppPlaneApiUrl`].OutputValue' \
-    --output text 2>/dev/null || echo "")
-
 LANDING_PAGE_URL=$(aws cloudformation describe-stacks \
     --stack-name AgenticInsightsAppPlane \
     --query 'Stacks[0].Outputs[?OutputKey==`LandingPageUrl`].OutputValue' \
@@ -41,10 +31,6 @@ ADMIN_PANEL_URL=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].Outputs[?OutputKey==`AdminPanelUrl`].OutputValue' \
     --output text 2>/dev/null || echo "")
 
-echo "=================================================="
-print_success "🎉 Deployment completed successfully!"
-echo "=================================================="
-echo
 echo "📋 Deployment Summary:"
 echo "----------------------"
 echo "AWS Account: $AWS_ACCOUNT"
@@ -54,19 +40,9 @@ echo "🔗 Application URLs:"
 if [ -n "$LANDING_PAGE_URL" ]; then
     echo "Landing Page: $LANDING_PAGE_URL"
 fi
-if [ -n "$ADMIN_PANEL_URL" ]; then
-    echo "Admin Panel: $ADMIN_PANEL_URL"
-fi
 if [ -n "$SAAS_APP_URL" ]; then
     echo "SaaS Application: $SAAS_APP_URL"
 fi
-echo
-echo "🔧 API Endpoints:"
-if [ -n "$CONTROL_PLANE_API" ]; then
-    echo "Control Plane API: $CONTROL_PLANE_API"
+if [ -n "$ADMIN_PANEL_URL" ]; then
+    echo "Admin Panel: $ADMIN_PANEL_URL | Admin User : admin@example.com | Password : Admin123!"
 fi
-if [ -n "$APP_PLANE_API" ]; then
-    echo "Application Plane API: $APP_PLANE_API"
-fi
-echo
-print_success "========= 🎉 Base Architecture Deployment completed successfully! =============="

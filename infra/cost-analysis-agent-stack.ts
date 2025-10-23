@@ -2,20 +2,101 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as bedrock from 'aws-cdk-lib/aws-bedrock';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
 interface CostAnalysisAgentStackProps extends cdk.StackProps {
-  costPerTenantTableName: string;
+  metricsTable: dynamodb.Table;
 }
 
 export class CostAnalysisAgentStack extends cdk.Stack {
   public readonly costAnalysisAgent: bedrock.CfnAgent;
   public readonly costAnalysisAgentAlias: bedrock.CfnAgentAlias;
+  public readonly metricsAggregationTable: dynamodb.Table;
+  public readonly costPerTenantTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: CostAnalysisAgentStackProps) {
     super(scope, id, props);
+
+    // DynamoDB table for aggregated metrics (monthly aggregation)
+    this.metricsAggregationTable = new dynamodb.Table(this, 'MetricsAggregationTable', {
+      tableName: 'AgenticInsights-MetricsAggregation',
+      partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'metric_date_type', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // GSI for month-based queries
+    this.metricsAggregationTable.addGlobalSecondaryIndex({
+      indexName: 'MonthIndex',
+      partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'metric_type', type: dynamodb.AttributeType.STRING },
+    });
+
+    // DynamoDB table for cost per tenant (aggregated from MetricsAggregation)
+    this.costPerTenantTable = new dynamodb.Table(this, 'CostPerTenantTable', {
+      tableName: 'AgenticInsights-CostPerTenant',
+      partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'month', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // GSI for month-based queries across all tenants
+    this.costPerTenantTable.addGlobalSecondaryIndex({
+      indexName: 'MonthIndex',
+      partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'tier', type: dynamodb.AttributeType.STRING },
+    });
+
+    // MetricsAggregatorService Lambda function
+    const metricsAggregatorService = new lambda.Function(this, 'MetricsAggregatorService', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/control-plane/metrics-aggregator'),
+      environment: {
+        METRICS_AGGREGATION_TABLE_NAME: this.metricsAggregationTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(60),
+    });
+
+    // CostAggregatorService Lambda function (processes MetricsAggregation stream)
+    const costAggregatorService = new lambda.Function(this, 'CostAggregatorService', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/control-plane/cost-aggregator'),
+      environment: {
+        COST_PER_TENANT_TABLE_NAME: this.costPerTenantTable.tableName,
+        METRICS_AGGREGATION_TABLE_NAME: this.metricsAggregationTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(60),
+    });
+
+    // Add DynamoDB stream event sources
+    metricsAggregatorService.addEventSource(
+      new DynamoEventSource(props.metricsTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 3,
+      })
+    );
+
+    costAggregatorService.addEventSource(new DynamoEventSource(this.metricsAggregationTable, {
+      startingPosition: lambda.StartingPosition.LATEST,
+      batchSize: 10,
+      retryAttempts: 3,
+    }));
+
+    // Grant permissions
+    props.metricsTable.grantReadData(metricsAggregatorService);
+    this.metricsAggregationTable.grantReadWriteData(metricsAggregatorService);
+    this.metricsAggregationTable.grantReadData(costAggregatorService);
+    this.costPerTenantTable.grantReadWriteData(costAggregatorService);
 
     // Load agent configuration
     const agentConfigPath = path.join(__dirname, '../src/control-plane/agents/cost-analysis-agent/agent-config.yaml');
@@ -37,7 +118,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
       code: lambda.Code.fromAsset('src/control-plane/agents/cost-analysis-agent/action-groups'),
       timeout: cdk.Duration.seconds(60),
       environment: {
-        COST_PER_TENANT_TABLE_NAME: props.costPerTenantTableName,
+        COST_PER_TENANT_TABLE_NAME: this.costPerTenantTable.tableName,
       },
     });
 
@@ -45,12 +126,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     getCostDatasetFunction.grantInvoke(new iam.ServicePrincipal('bedrock.amazonaws.com'));
 
     // Grant DynamoDB permissions
-    const costPerTenantTableArn = `arn:aws:dynamodb:${this.region}:${this.account}:table/${props.costPerTenantTableName}`;
-    getCostDatasetFunction.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ['dynamodb:Scan', 'dynamodb:Query'],
-      resources: [costPerTenantTableArn],
-    }));
+    this.costPerTenantTable.grantReadData(getCostDatasetFunction);
 
     // Bedrock Agent IAM Role
     const agentRole = new iam.Role(this, 'CostAnalysisAgentRole', {
@@ -165,6 +241,16 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CostAnalysisAgentAliasId', {
       value: this.costAnalysisAgentAlias.attrAgentAliasId,
       description: 'Cost Analysis Agent Alias ID',
+    });
+
+    new cdk.CfnOutput(this, 'MetricsAggregationTableName', {
+      value: this.metricsAggregationTable.tableName,
+      description: 'DynamoDB table for aggregated metrics',
+    });
+
+    new cdk.CfnOutput(this, 'CostPerTenantTableName', {
+      value: this.costPerTenantTable.tableName,
+      description: 'DynamoDB table for cost per tenant data',
     });
   }
 }

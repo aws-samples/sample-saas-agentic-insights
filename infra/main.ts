@@ -3,10 +3,7 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { ControlPlaneStack } from './control-plane-stack';
 import { AppPlaneStack } from './app-plane-stack';
-import { AIDescriptionStack } from './ai-description-stack';
 import { MetricsFrameworkStack } from './metrics-framework-stack';
-
-
 import { CostAnalysisAgentStack } from './cost-analysis-agent-stack';
 
 const app = new cdk.App();
@@ -28,7 +25,7 @@ const metricsFrameworkStack = new MetricsFrameworkStack(app, 'AgenticInsightsMet
   eventBus: controlPlaneStack.eventBus,
 });
 
-// Application Plane Stack - handles e-commerce functionality
+// Application Plane Stack - handles e-commerce functionality with AI
 const appPlaneStack = new AppPlaneStack(app, 'AgenticInsightsAppPlane', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -41,29 +38,17 @@ const appPlaneStack = new AppPlaneStack(app, 'AgenticInsightsAppPlane', {
   metricsEventBusName: controlPlaneStack.eventBus.eventBusName,
 });
 
-// AI Description Stack - handles AI-powered product description generation
-const aiDescriptionStack = new AIDescriptionStack(app, 'AgenticInsightsAIDescription', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION,
-  },
-  appPlaneApiId: appPlaneStack.appPlaneApi.restApiId,
-  appPlaneApiRootResourceId: appPlaneStack.appPlaneApi.root.resourceId,
-  authorizer: appPlaneStack.authorizer,
-});
-
-// Cost Analysis Agent Stack - simple agent for dataset exploration
+// Cost Analysis Agent Stack - handles cost analysis with moved components
 const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsCostAnalysisAgent', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
   },
-  costPerTenantTableName: metricsFrameworkStack.costPerTenantTable.tableName,
+  metricsTable: metricsFrameworkStack.metricsTable,
 });
 
 // Add dependencies
 metricsFrameworkStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(metricsFrameworkStack);
-aiDescriptionStack.addDependency(appPlaneStack);
 costAnalysisAgentStack.addDependency(metricsFrameworkStack);
