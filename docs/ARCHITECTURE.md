@@ -705,7 +705,7 @@ EventBridge-Driven User Creation Benefits:
 │  │   └── saas-app/             (Enhanced with AI Generate button)             │
 │  │                                                                             │
 │  └── scripts/                  (Deployment scripts)                           │
-│      ├── lab-01.1-deploy-base-architecture.sh                                 │
+│      ├── lab1.1-deploy-base-architecture.sh                                 │
 │      ├── lab-01.2-deploy-product-description-ai-agent.sh                      │
 │      └── delete-all.sh                                                        │
 │                                                                                 │

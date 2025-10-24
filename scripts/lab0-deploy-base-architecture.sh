@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Lab 00: Deploy Complete Base Architecture with AI
-# This script deploys the foundational multi-tenant e-commerce SaaS platform with AI features
-# Usage: ./lab-00-deploy-base-architecture.sh
+# Lab 00: Deploy Complete Base Architecture with AI and Metrics
+# This script deploys the foundational multi-tenant e-commerce SaaS platform with AI features and metrics framework
+# Usage: ./lab0-deploy-base-architecture.sh
 
 set -e  # Exit on any error
 
-echo "🚀 Lab 00: Deploying Complete Base Architecture with AI..."
-echo "========================================================"
+echo "🚀 Lab 00: Deploying Complete Base Architecture..."
+echo "================================================"
 
 # Colors for output
 RED='\033[0;31m'
@@ -112,7 +112,13 @@ if ! cdk deploy AgenticInsightsControlPlane --require-approval never; then
     exit 1
 fi
 
-print_status "Deploying Application Plane Stack (with AI)..."
+print_status "Deploying Metrics Framework Stack..."
+if ! cdk deploy AgenticInsightsMetricsFramework --require-approval never; then
+    print_error "Metrics Framework deployment failed"
+    exit 1
+fi
+
+print_status "Deploying Application Plane Stack (with AI and metrics)..."
 if ! cdk deploy AgenticInsightsAppPlane --require-approval never; then
     print_error "Application Plane deployment failed"
     exit 1
@@ -186,24 +192,13 @@ generate_web_configs
 print_success "Configuration files generated for all web applications"
 
 # Redeploy App Plane to update CloudFront with correct config files
-print_status "Redeploying Application Plane Stack (with config files)..."
+print_status "Redeploying Application Plane Stack (with config files and metrics)..."
 if ! cdk deploy AgenticInsightsAppPlane --require-approval never; then
     print_error "Application Plane redeployment failed"
     exit 1
 fi
 
 # Display deployment summary
-echo
-echo "📋 Deployment Summary:"
-echo "----------------------"
-echo "AWS Account: $AWS_ACCOUNT"
-echo "AWS Region: $AWS_REGION"
-echo
-echo "🧪 Use the following command for Testing AI product description Agent:"
-echo "curl -X POST $APP_PLANE_API/ai/generate-description \\"
-echo "  -H 'Authorization: Bearer <your-jwt-token>' \\"
-echo "  -H 'Content-Type: application/json' \\"
-echo "  -H 'tenant-id: <your-tenant-id>' \\"
 # Create default admin user
 echo
 echo "🔐 Creating Default Admin User..."
@@ -215,6 +210,17 @@ echo "📋 Deployment Summary:"
 echo "----------------------"
 echo "AWS Account: $(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo 'Unknown')"
 echo "AWS Region: $AWS_REGION"
+echo
+echo "📊 Features Deployed:"
+echo "• Multi-tenant SaaS platform (Basic & Premium tiers)"
+echo "• AI-powered product description generation (Bedrock)"
+echo "• Enhanced metrics collection library (Lambda Layer)"
+echo "• Event-driven metrics pipeline (EventBridge)"
+echo "• Raw metrics storage (90-day TTL)"
+echo "• Metrics aggregation service (DynamoDB Streams)"
+echo "• Cost aggregation service (Monthly rollups)"
+echo "• Cost per tenant tables (ready for analysis)"
+echo "• Real-time metrics collection from tenant activities"
 echo
 echo "🔗 Application URLs:"
 if [ -n "$LANDING_PAGE_URL" ]; then
@@ -229,5 +235,5 @@ fi
 
 echo
 echo "=================================================="
-print_success "🎉 Deployment completed successfully!"
+print_success "🎉 Base Architecture Deployment completed successfully!"
 echo "=================================================="

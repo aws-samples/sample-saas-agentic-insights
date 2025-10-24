@@ -36,7 +36,7 @@ npm install
 
 ### 2. Deploy Base Architecture
 ```bash
-./scripts/lab-01.1-deploy-base-architecture.sh
+./scripts/lab1.1-deploy-base-architecture.sh
 ```
 The script will ask to create a SaaS admin user towards the end of the deployment. Make sure to create one. You can create more users by running this script later. 
 
@@ -49,7 +49,7 @@ After the base deployment, the console output will show the following CloudFront
 ### 3. Run Labs 
 ### Lab 01: Adding an AI agent to generate product descriptions : 
 ```bash
-./scripts/lab-01.1-deploy-base-architecture.sh
+./scripts/lab1.1-deploy-base-architecture.sh
 ```
 
 ### Lab 02: Adding metering framework & Cost analysis Agent: 

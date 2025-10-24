@@ -38,13 +38,15 @@ const appPlaneStack = new AppPlaneStack(app, 'AgenticInsightsAppPlane', {
   metricsEventBusName: controlPlaneStack.eventBus.eventBusName,
 });
 
-// Cost Analysis Agent Stack - handles cost analysis with moved components
+// Cost Analysis Agent Stack - handles cost analysis with tables from metrics framework
 const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsCostAnalysisAgent', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
   },
   metricsTable: metricsFrameworkStack.metricsTable,
+  metricsAggregationTable: metricsFrameworkStack.metricsAggregationTable,
+  costPerTenantTable: metricsFrameworkStack.costPerTenantTable,
 });
 
 // Add dependencies

@@ -45,7 +45,7 @@ The solution follows a **Control Plane** and **Application Plane** architecture 
 
 2. **Deploy to AWS**:
    ```bash
-   ./scripts/lab-01.1-deploy-base-architecture.sh
+   ./scripts/lab1.1-deploy-base-architecture.sh
    ```
 
 3. **Deploy AI Product Description Agent** (Optional):
@@ -66,10 +66,10 @@ The deployment script automatically generates and manages configuration files fo
 **Deployment Options**:
 ```bash
 # Normal deployment - only redeploys web apps if configuration changed
-./scripts/lab-01.1-deploy-base-architecture.sh
+./scripts/lab1.1-deploy-base-architecture.sh
 
 # Force deployment - always redeploys web apps (useful for testing)
-./scripts/lab-01.1-deploy-base-architecture.sh --force
+./scripts/lab1.1-deploy-base-architecture.sh --force
 ```
 
 **Configuration Structure**:
@@ -122,7 +122,7 @@ To deploy the solution to a different AWS region (e.g., us-east-2, eu-west-1):
 
 4. **Deploy to new region**:
    ```bash
-   ./scripts/lab-01.1-deploy-base-architecture.sh
+   ./scripts/lab1.1-deploy-base-architecture.sh
    ```
 
 #### Region-Specific Considerations
@@ -178,7 +178,7 @@ agentic-insights-saas/
 │   ├── admin-panel/                # Platform management
 │   └── saas-app/                   # E-commerce application
 ├── scripts/                        # Deployment scripts
-│   ├── lab-01.1-deploy-base-architecture.sh # Lab 01.1: Base deployment
+│   ├── lab1.1-deploy-base-architecture.sh # Lab 01.1: Base deployment
 │   └── delete-all.sh               # Complete cleanup
 └── specs/                          # Documentation
     ├── requirements.md             # Detailed requirements

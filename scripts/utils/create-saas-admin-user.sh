@@ -38,36 +38,66 @@ auto_create_admin_user() {
         --output text \
         --region "$AWS_REGION" 2>/dev/null || echo "")
     
-    if [ -n "$ADMIN_USER_POOL_ID" ]; then
-        print_status "Creating admin user with email: $email"
+    if [ -z "$ADMIN_USER_POOL_ID" ]; then
+        print_error "Could not retrieve Admin User Pool ID"
+        return 1
+    fi
+
+    print_status "Creating admin user with email: $email"
+    
+    # Check if user already exists
+    if aws cognito-idp admin-get-user \
+        --user-pool-id "$ADMIN_USER_POOL_ID" \
+        --username "$email" \
+        --region "$AWS_REGION" &>/dev/null; then
         
-        # Try to create admin user first
-        aws cognito-idp admin-create-user \
+        print_status "Admin user already exists, updating password..."
+        
+        # User exists, just update password
+        if aws cognito-idp admin-set-user-password \
+            --user-pool-id "$ADMIN_USER_POOL_ID" \
+            --username "$email" \
+            --password "$password" \
+            --permanent \
+            --region "$AWS_REGION" 2>/dev/null; then
+            
+            print_success "Admin user password updated successfully"
+            return 0
+        else
+            print_error "Failed to update admin user password. Check password policy requirements."
+            return 1
+        fi
+    else
+        # User doesn't exist, create new user
+        print_status "Creating new admin user..."
+        
+        # Create admin user
+        if aws cognito-idp admin-create-user \
             --user-pool-id "$ADMIN_USER_POOL_ID" \
             --username "$email" \
             --user-attributes Name=email,Value="$email" Name=email_verified,Value=true \
             --temporary-password "TempPass123!" \
             --message-action SUPPRESS \
-            --region "$AWS_REGION" 2>/dev/null
-        
-        # If user exists or creation succeeded, set the password
-        aws cognito-idp admin-set-user-password \
-            --user-pool-id "$ADMIN_USER_POOL_ID" \
-            --username "$email" \
-            --password "$password" \
-            --permanent \
-            --region "$AWS_REGION" 2>/dev/null
-        
-        if [ $? -eq 0 ]; then
-            print_success "Admin user created/updated successfully"
-            return 0
+            --region "$AWS_REGION" 2>/dev/null; then
+            
+            # Set permanent password
+            if aws cognito-idp admin-set-user-password \
+                --user-pool-id "$ADMIN_USER_POOL_ID" \
+                --username "$email" \
+                --password "$password" \
+                --permanent \
+                --region "$AWS_REGION" 2>/dev/null; then
+                
+                print_success "Admin user created successfully"
+                return 0
+            else
+                print_error "User created but failed to set password. Check password policy requirements."
+                return 1
+            fi
         else
-            print_error "Failed to set admin user password"
+            print_error "Failed to create admin user"
             return 1
         fi
-    else
-        print_error "Could not retrieve Admin User Pool ID"
-        return 1
     fi
 }
 
@@ -111,8 +141,13 @@ create_admin_user() {
 
 # Check for auto flag
 if [[ "$1" == "--auto" ]]; then
-    local email="${2:-admin@example.com}"
-    local password="${3:-Admin123!}"
+    email="$2"
+    password="$3"
+    
+    if [ -z "$email" ] || [ -z "$password" ]; then
+        print_error "Usage: $0 --auto <email> <password>"
+        exit 1
+    fi
     
     echo "🔐 Creating Default Admin User"
     echo "================================"

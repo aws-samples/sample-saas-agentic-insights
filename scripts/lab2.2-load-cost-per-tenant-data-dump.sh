@@ -2,7 +2,7 @@
 
 # Lab 03.2: Load Cost Per Tenant Data Dump
 # This script loads sample cost data into the CostPerTenantTable for testing
-# Usage: ./lab-03.2-load-cost-per-tenant-data-dump.sh
+# Usage: ./lab2.2-load-cost-per-tenant-data-dump.sh
 
 set -e  # Exit on any error
 
@@ -27,6 +27,10 @@ print_success() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+# Get AWS region and display it
+AWS_REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+print_status "AWS Region: $AWS_REGION"
 
 # Check prerequisites
 print_status "Checking prerequisites..."
@@ -76,7 +80,7 @@ fi
 print_status "Found table: $COST_TABLE_NAME"
 
 # Check if data dump file exists
-DATA_FILE="scripts/lab-03.2-cost-per-tenant-data-dump.json"
+DATA_FILE="scripts/lab2.2-cost-per-tenant-data-dump.json"
 if [ ! -f "$DATA_FILE" ]; then
     print_error "Data dump file not found: $DATA_FILE"
     exit 1
@@ -164,10 +168,5 @@ echo "📋 Summary:"
 echo "Table: $COST_TABLE_NAME"
 echo "Items loaded: $ITEM_COUNT"
 echo "Region: $AWS_REGION"
-echo
-echo "📚 Next Steps:"
-echo "1. Visit the Admin Panel to view cost analysis"
-echo "2. Test the cost analysis agent functionality"
-echo "3. Monitor the data in DynamoDB console"
 echo
 echo "================================================="

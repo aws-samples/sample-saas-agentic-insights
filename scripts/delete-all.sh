@@ -245,5 +245,5 @@ echo
 echo "⚠️  Note: Some resources may take a few minutes to be fully deleted."
 echo "   You can check the CloudFormation console to monitor the deletion progress."
 echo
-echo "🔄 To redeploy the solution, run: ./scripts/lab-01.1-deploy-base-architecture.sh"
+echo "🔄 To redeploy the solution, run: ./scripts/lab1.1-deploy-base-architecture.sh"
 echo "=================================================="
