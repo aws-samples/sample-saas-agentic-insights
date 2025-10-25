@@ -6,9 +6,8 @@ const OrderManager = {
         ordersList.innerHTML = '<div class="loading">Loading orders...</div>';
         
         try {
-            const tier = App.state.tenant.tier;
             const response = await Auth.makeAuthenticatedRequest(
-                `${App.config.APP_PLANE_API_URL}/${tier}/orders`
+                `${App.config.APP_PLANE_API_URL}/orders`
             );
             
             if (response.ok) {
@@ -77,9 +76,8 @@ const OrderManager = {
         createOrderBtn.textContent = 'Creating Order...';
         
         try {
-            const tier = App.state.tenant.tier;
             const response = await Auth.makeAuthenticatedRequest(
-                `${App.config.APP_PLANE_API_URL}/${tier}/orders`,
+                `${App.config.APP_PLANE_API_URL}/orders`,
                 {
                     method: 'POST',
                     body: JSON.stringify({

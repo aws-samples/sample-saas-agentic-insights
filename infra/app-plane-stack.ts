@@ -281,35 +281,21 @@ export class AppPlaneStack extends cdk.Stack {
     const orderIntegration = new apigateway.LambdaIntegration(orderFunction);
     const userIntegration = new apigateway.LambdaIntegration(userFunction);
 
-    // Basic tier routes
-    const basicResource = this.appPlaneApi.root.addResource('basic');
-    const basicProductsResource = basicResource.addResource('products');
-    basicProductsResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
-    basicProductsResource.addMethod('POST', productIntegration, { authorizer: this.authorizer });
+
+
+    // Common routes (tier-agnostic)
+    const productsResource = this.appPlaneApi.root.addResource('products');
+    productsResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
+    productsResource.addMethod('POST', productIntegration, { authorizer: this.authorizer });
     
-    const basicProductIdResource = basicProductsResource.addResource('{product_id}');
-    basicProductIdResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
-    basicProductIdResource.addMethod('PUT', productIntegration, { authorizer: this.authorizer });
-    basicProductIdResource.addMethod('DELETE', productIntegration, { authorizer: this.authorizer });
+    const productIdResource = productsResource.addResource('{product_id}');
+    productIdResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
+    productIdResource.addMethod('PUT', productIntegration, { authorizer: this.authorizer });
+    productIdResource.addMethod('DELETE', productIntegration, { authorizer: this.authorizer });
 
-    const basicOrdersResource = basicResource.addResource('orders');
-    basicOrdersResource.addMethod('GET', orderIntegration, { authorizer: this.authorizer });
-    basicOrdersResource.addMethod('POST', orderIntegration, { authorizer: this.authorizer });
-
-    // Premium tier routes
-    const premiumResource = this.appPlaneApi.root.addResource('premium');
-    const premiumProductsResource = premiumResource.addResource('products');
-    premiumProductsResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
-    premiumProductsResource.addMethod('POST', productIntegration, { authorizer: this.authorizer });
-    
-    const premiumProductIdResource = premiumProductsResource.addResource('{product_id}');
-    premiumProductIdResource.addMethod('GET', productIntegration, { authorizer: this.authorizer });
-    premiumProductIdResource.addMethod('PUT', productIntegration, { authorizer: this.authorizer });
-    premiumProductIdResource.addMethod('DELETE', productIntegration, { authorizer: this.authorizer });
-
-    const premiumOrdersResource = premiumResource.addResource('orders');
-    premiumOrdersResource.addMethod('GET', orderIntegration, { authorizer: this.authorizer });
-    premiumOrdersResource.addMethod('POST', orderIntegration, { authorizer: this.authorizer });
+    const ordersResource = this.appPlaneApi.root.addResource('orders');
+    ordersResource.addMethod('GET', orderIntegration, { authorizer: this.authorizer });
+    ordersResource.addMethod('POST', orderIntegration, { authorizer: this.authorizer });
 
     // Common user routes
     const userResource = this.appPlaneApi.root.addResource('user');

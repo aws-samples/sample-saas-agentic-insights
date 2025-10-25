@@ -6,9 +6,8 @@ const ProductManager = {
         productGrid.innerHTML = '<div class="loading">Loading products...</div>';
         
         try {
-            const tier = App.state.tenant.tier;
             const response = await Auth.makeAuthenticatedRequest(
-                `${App.config.APP_PLANE_API_URL}/${tier}/products`
+                `${App.config.APP_PLANE_API_URL}/products`
             );
             
             if (response.ok) {
@@ -195,10 +194,9 @@ const ProductManager = {
         saveBtn.textContent = isEdit ? 'Updating...' : 'Creating...';
         
         try {
-            const tier = App.state.tenant.tier;
             const url = isEdit 
-                ? `${App.config.APP_PLANE_API_URL}/${tier}/products/${productId}`
-                : `${App.config.APP_PLANE_API_URL}/${tier}/products`;
+                ? `${App.config.APP_PLANE_API_URL}/products/${productId}`
+                : `${App.config.APP_PLANE_API_URL}/products`;
             
             const response = await Auth.makeAuthenticatedRequest(url, {
                 method: isEdit ? 'PUT' : 'POST',
@@ -229,9 +227,8 @@ const ProductManager = {
         }
         
         try {
-            const tier = App.state.tenant.tier;
             const response = await Auth.makeAuthenticatedRequest(
-                `${App.config.APP_PLANE_API_URL}/${tier}/products/${productId}`,
+                `${App.config.APP_PLANE_API_URL}/products/${productId}`,
                 { method: 'DELETE' }
             );
             
