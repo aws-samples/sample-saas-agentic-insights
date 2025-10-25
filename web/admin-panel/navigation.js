@@ -1,9 +1,8 @@
 // Navigation Controller with GSAP animations
 class NavigationController {
     constructor() {
-        this.currentPage = 'dashboard';
+        this.currentPage = 'tenants';
         this.pages = {
-            'dashboard': () => this.loadDashboardPage(),
             'tenants': () => this.loadTenantsPage(),
             'cost-analysis': () => this.loadCostAnalysisPage()
         };
@@ -50,58 +49,6 @@ class NavigationController {
         this.pages[page]();
     }
     
-    loadDashboardPage() {
-        const content = `
-            <div class="space-y-8">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
-                        <p class="text-gray-300">Platform overview and tenant management</p>
-                    </div>
-                </div>
-                
-                <!-- Quick Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                        <h3 class="text-lg font-semibold text-gray-300 mb-2">Total Tenants</h3>
-                        <p class="text-3xl font-bold text-white" id="total-tenants">-</p>
-                    </div>
-                    <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                        <h3 class="text-lg font-semibold text-gray-300 mb-2">Basic Tier</h3>
-                        <p class="text-3xl font-bold text-blue-400" id="basic-tenants">-</p>
-                    </div>
-                    <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                        <h3 class="text-lg font-semibold text-gray-300 mb-2">Premium Tier</h3>
-                        <p class="text-3xl font-bold text-purple-400" id="premium-tenants">-</p>
-                    </div>
-                    <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                        <h3 class="text-lg font-semibold text-gray-300 mb-2">Monthly Revenue</h3>
-                        <p class="text-3xl font-bold text-green-400" id="monthly-revenue">-</p>
-                    </div>
-                </div>
-                
-                <!-- Tenant List -->
-                <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                    <h3 class="text-xl font-semibold text-white mb-4">Recent Tenants</h3>
-                    <div id="tenant-list">Loading...</div>
-                </div>
-            </div>
-        `;
-        
-        const pageContent = document.getElementById('page-content');
-        if (!pageContent) {
-            console.error('page-content element not found');
-            return;
-        }
-        
-        pageContent.innerHTML = content;
-        
-        // Load dashboard data after content is set
-        if (window.AdminApp) {
-            window.AdminApp.loadDashboard();
-        }
-    }
-    
     loadTenantsPage() {
         const content = `
             <div class="space-y-8">
@@ -115,7 +62,59 @@ class NavigationController {
                     </button>
                 </div>
                 
+                <!-- Stats Section -->
+                <div class="space-y-6">
+                    <!-- Tenant Stats Group -->
+                    <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Tenants Overview
+                        </h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-white" id="total-tenants">-</p>
+                                <p class="text-sm text-gray-400">Total</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-blue-400" id="basic-tenants">-</p>
+                                <p class="text-sm text-gray-400">Basic</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-purple-400" id="premium-tenants">-</p>
+                                <p class="text-sm text-gray-400">Premium</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-2xl font-bold text-red-400" id="deleted-tenants">-</p>
+                                <p class="text-sm text-gray-400">Deleted</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Revenue Stats -->
+                    <div class="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Monthly Revenue
+                        </h3>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-3xl font-bold text-green-400" id="monthly-revenue">$0</p>
+                                <p class="text-sm text-gray-400">Recurring monthly revenue from active tenants</p>
+                            </div>
+                            <div class="text-right text-sm text-gray-400">
+                                <p>Basic: $29/month</p>
+                                <p>Premium: $99/month</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                    <h3 class="text-xl font-semibold text-white mb-4">Tenants</h3>
                     <div id="tenant-list">Loading tenants...</div>
                 </div>
                 
@@ -180,7 +179,7 @@ class NavigationController {
         
         pageContent.innerHTML = content;
         
-        // Load tenant data and attach event listeners
+        // Load tenant data and stats
         if (window.AdminApp) {
             window.AdminApp.loadTenants();
             
@@ -292,8 +291,3 @@ class NavigationController {
         });
     }
 }
-
-// Initialize navigation when DOM is loaded (but don't load initial page)
-document.addEventListener('DOMContentLoaded', () => {
-    window.navigationController = new NavigationController();
-});

@@ -21,16 +21,9 @@ const AdminApp = {
         if (token && !this.isTokenExpired(token)) {
             this.showApp();
             this.loadAdminInfo();
-            this.loadDashboard();
             
-            // Initialize navigation and load dashboard page immediately
-            setTimeout(() => {
-                if (!window.navigationController) {
-                    window.navigationController = new NavigationController();
-                }
-                // Force load dashboard page immediately
-                window.navigationController.navigateToPage('dashboard');
-            }, 50);
+            // Load tenant page content directly
+            this.loadTenantPageDirectly();
         } else {
             this.showLoginModal();
         }
@@ -126,16 +119,9 @@ const AdminApp = {
                 // Show app and initialize
                 this.showApp();
                 this.loadAdminInfo();
-                this.loadDashboard();
                 
-                // Initialize navigation and load dashboard page immediately
-                setTimeout(() => {
-                    if (!window.navigationController) {
-                        window.navigationController = new NavigationController();
-                    }
-                    // Force load dashboard page immediately
-                    window.navigationController.navigateToPage('dashboard');
-                }, 50);
+                // Load tenant page content directly
+                this.loadTenantPageDirectly();
                 
             } else {
                 const errorData = await response.json();
@@ -219,6 +205,41 @@ const AdminApp = {
         this.updateDashboardStats();
     },
 
+    // Load tenants page with retry mechanism
+    loadTenantsPageWithRetry(attempts = 0) {
+        const pageContent = document.getElementById('page-content');
+        if (!pageContent && attempts < 10) {
+            setTimeout(() => this.loadTenantsPageWithRetry(attempts + 1), 100);
+            return;
+        }
+        
+        if (pageContent && window.navigationController) {
+            window.navigationController.navigateToPage('tenants');
+        } else {
+            console.error('Failed to load tenants page - DOM not ready');
+        }
+    },
+
+    // Load tenant page content directly
+    loadTenantPageDirectly() {
+        const pageContent = document.getElementById('page-content');
+        if (!pageContent) return;
+        
+        // Set active nav
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active', 'bg-gray-700/50');
+            if (item.getAttribute('data-page') === 'tenants') {
+                item.classList.add('active', 'bg-gray-700/50');
+            }
+        });
+        
+        // Load content directly from navigation controller
+        if (!window.navigationController) {
+            window.navigationController = new NavigationController();
+        }
+        window.navigationController.loadTenantsPage();
+    },
+
     // Load tenants
     async loadTenants() {
         const tenantList = document.getElementById('tenant-list');
@@ -233,6 +254,7 @@ const AdminApp = {
                 const data = await response.json();
                 this.state.tenants = data.tenants || [];
                 this.renderTenants();
+                this.updateDashboardStats(); // Update stats after tenants are loaded
             } else {
                 throw new Error('Failed to load tenants');
             }
@@ -303,16 +325,22 @@ const AdminApp = {
         const basicTenants = this.state.tenants.filter(t => t.tier === 'basic').length;
         const premiumTenants = this.state.tenants.filter(t => t.tier === 'premium').length;
         const activeTenants = this.state.tenants.filter(t => t.status === 'active').length;
+        const deletedTenants = this.state.tenants.filter(t => t.status === 'deleted').length;
+        const monthlyRevenue = (basicTenants * 29) + (premiumTenants * 99);
         
         const totalTenantsEl = document.getElementById('total-tenants');
         const basicTenantsEl = document.getElementById('basic-tenants');
         const premiumTenantsEl = document.getElementById('premium-tenants');
         const activeTenantsEl = document.getElementById('active-tenants');
+        const deletedTenantsEl = document.getElementById('deleted-tenants');
+        const monthlyRevenueEl = document.getElementById('monthly-revenue');
         
         if (totalTenantsEl) totalTenantsEl.textContent = totalTenants;
         if (basicTenantsEl) basicTenantsEl.textContent = basicTenants;
         if (premiumTenantsEl) premiumTenantsEl.textContent = premiumTenants;
         if (activeTenantsEl) activeTenantsEl.textContent = activeTenants;
+        if (deletedTenantsEl) deletedTenantsEl.textContent = deletedTenants;
+        if (monthlyRevenueEl) monthlyRevenueEl.textContent = `$${monthlyRevenue}`;
     },
 
     // Show add tenant modal
