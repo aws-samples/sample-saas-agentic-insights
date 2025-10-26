@@ -147,11 +147,11 @@ export class AppPlaneStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
     });
 
-    // User Creation Service Lambda (handles EventBridge events)
-    const userCreationFunction = new lambda.Function(this, 'UserCreationFunction', {
+    // Tenant Admin Service Lambda (handles EventBridge events for tenant onboarding)
+    const tenantAdminFunction = new lambda.Function(this, 'TenantAdminFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset('src/app-plane/user-creation'),
+      code: lambda.Code.fromAsset('src/app-plane/tenant-admin'),
       environment: {
         BASIC_USER_POOL_ID: basicTierUserPool.userPoolId,
         PREMIUM_USER_POOL_ID: premiumTierUserPool.userPoolId,
@@ -193,8 +193,8 @@ export class AppPlaneStack extends cdk.Stack {
       resources: [`arn:aws:dynamodb:${this.region}:${this.account}:table/Orders-*`],
     }));
 
-    // Grant Cognito permissions to user creation service
-    userCreationFunction.addToRolePolicy(new iam.PolicyStatement({
+    // Grant Cognito permissions to tenant admin service
+    tenantAdminFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         'cognito-idp:AdminCreateUser',
@@ -208,8 +208,8 @@ export class AppPlaneStack extends cdk.Stack {
       ],
     }));
 
-    // Grant Tenants table read access to user creation service (for Premium tenant pool lookup)
-    userCreationFunction.addToRolePolicy(new iam.PolicyStatement({
+    // Grant Tenants table read access to tenant admin service (for Premium tenant pool lookup)
+    tenantAdminFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['dynamodb:GetItem'],
       resources: [`arn:aws:dynamodb:${this.region}:${this.account}:table/Tenants`],
@@ -452,14 +452,14 @@ export class AppPlaneStack extends cdk.Stack {
       distributionPaths: ['/*'],
     });
 
-    // EventBridge rule for user creation
-    new events.Rule(this, 'UserCreationRule', {
+    // EventBridge rule for tenant admin creation during tenant onboarding
+    new events.Rule(this, 'TenantAdminRule', {
       eventBus: props.eventBus,
       eventPattern: {
         source: ['tenant.service'],
         detailType: ['Admin User Creation Requested'],
       },
-      targets: [new targets.LambdaFunction(userCreationFunction)],
+      targets: [new targets.LambdaFunction(tenantAdminFunction)],
     });
 
     // AI Product Description Components
