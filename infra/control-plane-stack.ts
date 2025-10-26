@@ -202,6 +202,13 @@ export class ControlPlaneStack extends cdk.Stack {
       },
     });
 
+    // Cognito authorizer for admin endpoints
+    const adminAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'AdminAuthorizer', {
+      cognitoUserPools: [adminUserPool],
+      identitySource: 'method.request.header.Authorization',
+      authorizerName: 'AdminCognitoAuthorizer',
+    });
+
     // API Gateway integrations
     const registrationIntegration = new apigateway.LambdaIntegration(registrationFunction);
     const loginIntegration = new apigateway.LambdaIntegration(loginFunction);
@@ -213,13 +220,13 @@ export class ControlPlaneStack extends cdk.Stack {
     this.controlPlaneApi.root.addResource('login').addMethod('POST', loginIntegration);
     
     const tenantsResource = this.controlPlaneApi.root.addResource('tenants');
-    tenantsResource.addMethod('GET', tenantManagementIntegration);
-    tenantsResource.addMethod('POST', tenantManagementIntegration);
-    tenantsResource.addResource('{tenant_id}').addMethod('DELETE', tenantManagementIntegration);
+    tenantsResource.addMethod('GET', tenantManagementIntegration, { authorizer: adminAuthorizer });
+    tenantsResource.addMethod('POST', tenantManagementIntegration, { authorizer: adminAuthorizer });
+    tenantsResource.addResource('{tenant_id}').addMethod('DELETE', tenantManagementIntegration, { authorizer: adminAuthorizer });
 
     // Insight Dashboard API
     const insightDashboardResource = this.controlPlaneApi.root.addResource('insight-dashboard');
-    insightDashboardResource.addMethod('POST', insightDashboardIntegration);
+    insightDashboardResource.addMethod('POST', insightDashboardIntegration, { authorizer: adminAuthorizer });
 
     // EventBridge rule for tenant provisioning
     new events.Rule(this, 'TenantProvisioningRule', {

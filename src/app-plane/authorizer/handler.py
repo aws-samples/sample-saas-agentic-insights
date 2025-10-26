@@ -1,95 +1,80 @@
 import json
-import base64
 import os
 from typing import Dict, Any
+import jwt_validator
 
-# Updated: Fixed JWT import issue and tier detection from custom attributes
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Simple Lambda authorizer for API Gateway"""
+    """Lambda authorizer with standard JWT validation but previous context structure"""
     try:
-        # Extract token from Authorization header
-        token = event['authorizationToken']
-        if token.startswith('Bearer '):
-            token = token[7:]
+        # Extract token (following standard pattern)
+        token = event['authorizationToken'].split(" ")
+        if token[0] != 'Bearer':
+            raise Exception('Authorization header should have a format Bearer <JWT> Token')
         
-        # Extract method ARN for policy generation
+        jwt_bearer_token = token[1]
         method_arn = event['methodArn']
         
         print(f"Method ARN: {method_arn}")
         
-        # Simple token validation - decode JWT payload without verification for demo
-        # In production, you should properly verify the JWT signature
-        try:
-            # Split JWT token
-            parts = token.split('.')
-            if len(parts) != 3:
-                raise Exception('Invalid token format')
-            
-            # Decode payload (add padding if needed)
-            payload = parts[1]
-            # Add padding if needed for base64 decoding
-            missing_padding = len(payload) % 4
-            if missing_padding:
-                payload += '=' * (4 - missing_padding)
-            
-            decoded_payload = base64.urlsafe_b64decode(payload)
-            claims = json.loads(decoded_payload.decode('utf-8'))
-            
-            print(f"Claims object: {json.dumps(claims, indent=2)}")
-            
-            # Extract tenant context
-            tenant_id = claims.get('custom:tenant_id')
-            role = claims.get('custom:role', 'tenant_user')
-            tier = claims.get('custom:tier')
-            
-            print(f"Tenant ID: {tenant_id}, Role: {role}, Tier: {tier}")
-            
-            if not tenant_id:
-                raise Exception('Missing tenant_id in token')
-            
-            if not tier:
-                raise Exception('Missing tier in token')
-            
-            # Generate allow policy with wildcard for all HTTP methods
-            # Convert specific method ARN to wildcard pattern
-            # From: arn:aws:execute-api:region:account:api-id/stage/METHOD/resource/path
-            # To:   arn:aws:execute-api:region:account:api-id/stage/*/resource/path
-            
-            # Split ARN into base and path parts
-            if '/prod/' in method_arn:
-                base_part, path_part = method_arn.split('/prod/', 1)
-                # path_part is now: METHOD/resource/path
-                path_segments = path_part.split('/', 1)
-                if len(path_segments) >= 2:
-                    # Replace METHOD with *
-                    wildcard_arn = f"{base_part}/prod/*/{path_segments[1]}"
-                else:
-                    wildcard_arn = f"{base_part}/prod/*"
+        # Validate JWT using standard pattern
+        input_details = {
+            'jwtToken': jwt_bearer_token
+        }
+        
+        response = jwt_validator.validateJWT(input_details)
+        
+        # Check validation result (following standard pattern)
+        if response == False:
+            print('Unauthorized')
+            raise Exception('Unauthorized')
+        
+        print(f"Validated claims: {json.dumps(response, indent=2, default=str)}")
+        
+        # Extract claims (support both old and new field names)
+        tenant_id = response.get("custom:tenant_id") or response.get("custom:tenantId")
+        role = response.get("custom:role") or response.get("custom:userRole", "tenant_user")
+        tier = response.get("custom:tier") or response.get("custom:tenantTier")
+        user_id = response.get("sub", "unknown")
+        
+        print(f"Tenant ID: {tenant_id}, Role: {role}, Tier: {tier}")
+        
+        # Validate required fields
+        if not tenant_id:
+            raise Exception('Missing tenant_id in token')
+        if not tier:
+            raise Exception('Missing tier in token')
+        
+        # Generate allow policy with wildcard (same as before)
+        if '/prod/' in method_arn:
+            base_part, path_part = method_arn.split('/prod/', 1)
+            path_segments = path_part.split('/', 1)
+            if len(path_segments) >= 2:
+                wildcard_arn = f"{base_part}/prod/*/{path_segments[1]}"
             else:
-                wildcard_arn = method_arn
-            
-            print(f"Wildcard ARN: {wildcard_arn}")
-            
-            policy = generate_policy(claims.get('sub', 'user'), 'Allow', wildcard_arn, {
-                'tenant_id': tenant_id,
-                'role': role,
-                'tier': tier,
-                'user_id': claims.get('sub', 'unknown')
-            })
-            
-            return policy
-            
-        except Exception as e:
-            print(f"Token parsing error: {str(e)}")
-            raise Exception('Invalid token')
+                wildcard_arn = f"{base_part}/prod/*"
+        else:
+            wildcard_arn = method_arn
+        
+        print(f"Wildcard ARN: {wildcard_arn}")
+        
+        # Use previous policy structure (not AuthPolicy class)
+        policy = generate_policy(user_id, 'Allow', wildcard_arn, {
+            'tenant_id': tenant_id,
+            'role': role,
+            'tier': tier,
+            'user_id': user_id,
+            'jwt_token': jwt_bearer_token  # Pass JWT token as before!
+        })
+        
+        return policy
         
     except Exception as e:
         print(f"Authorization error: {str(e)}")
-        # Return deny policy
+        # Return deny policy (same as before)
         return generate_policy('user', 'Deny', event['methodArn'])
 
 def generate_policy(principal_id: str, effect: str, resource: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-    """Generate IAM policy for API Gateway"""
+    """Generate IAM policy for API Gateway (same as before)"""
     policy = {
         'principalId': principal_id,
         'policyDocument': {

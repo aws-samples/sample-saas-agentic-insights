@@ -117,9 +117,15 @@ class CostAnalysisController {
     async loadInsightData() {
         try {
             this.showLoading();
+            const token = localStorage.getItem('adminToken');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch(`${window.APP_CONFIG.CONTROL_PLANE_API_URL}/insight-dashboard`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify({ analysis_type: 'simple-cost-analysis' })
             });
             
