@@ -4,14 +4,15 @@ const Auth = {
     async handleLogin(event) {
         event.preventDefault();
         
+        const tenantName = document.getElementById('tenant-name').value.trim();
         const email = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
         const errorDiv = document.getElementById('login-error');
         const loginBtn = document.querySelector('#login-form button[type="submit"]');
         
         // Validate input
-        if (!email || !password) {
-            Auth.showLoginError('Please enter both email and password');
+        if (!tenantName || !email || !password) {
+            Auth.showLoginError('Please enter tenant name, email, and password');
             return;
         }
         
@@ -20,9 +21,7 @@ const Auth = {
         loginBtn.textContent = 'Logging in...';
         
         try {
-            // Determine which user pool to use based on email domain or other logic
-            // For now, we'll try both tiers (this could be optimized)
-            const response = await Auth.attemptLogin(email, password);
+            const response = await Auth.attemptLogin(tenantName, email, password);
             
             if (response.ok) {
                 const data = await response.json();
@@ -57,13 +56,14 @@ const Auth = {
     },
 
     // Attempt login with the control plane API
-    async attemptLogin(email, password) {
+    async attemptLogin(tenantName, email, password) {
         return fetch(`${App.config.CONTROL_PLANE_API_URL}/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+                tenant_name: tenantName,
                 email: email,
                 password: password
             })

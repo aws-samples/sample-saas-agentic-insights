@@ -279,7 +279,10 @@ const AdminApp = {
             return;
         }
         
-        tenantList.innerHTML = this.state.tenants.map(tenant => `
+        // Filter out deleted tenants from the display
+        const activeTenants = this.state.tenants.filter(tenant => tenant.status !== 'deleted');
+        
+        tenantList.innerHTML = activeTenants.map(tenant => `
             <div class="tenant-card">
                 <div class="tenant-info">
                     <h4>${tenant.tenant_name}</h4>
@@ -321,9 +324,12 @@ const AdminApp = {
 
     // Update dashboard stats
     updateDashboardStats() {
-        const totalTenants = this.state.tenants.length;
-        const basicTenants = this.state.tenants.filter(t => t.tier === 'basic').length;
-        const premiumTenants = this.state.tenants.filter(t => t.tier === 'premium').length;
+        // Filter out deleted tenants for most statistics
+        const activeAndProvisioningTenants = this.state.tenants.filter(t => t.status !== 'deleted');
+        
+        const totalTenants = activeAndProvisioningTenants.length;
+        const basicTenants = activeAndProvisioningTenants.filter(t => t.tier === 'basic').length;
+        const premiumTenants = activeAndProvisioningTenants.filter(t => t.tier === 'premium').length;
         const activeTenants = this.state.tenants.filter(t => t.status === 'active').length;
         const deletedTenants = this.state.tenants.filter(t => t.status === 'deleted').length;
         const monthlyRevenue = (basicTenants * 29) + (premiumTenants * 99);
@@ -465,9 +471,9 @@ const AdminApp = {
         const tenant = this.state.tenants.find(t => t.tenant_id === tenantId);
         if (!tenant) return;
         
-        if (!confirm(`Are you sure you want to delete tenant "${tenant.tenant_name}"? This action cannot be undone.`)) {
-            return;
-        }
+        // Show custom confirmation modal
+        const confirmed = await this.showDeleteConfirmation(tenant.tenant_name);
+        if (!confirmed) return;
         
         try {
             const response = await this.makeAuthenticatedRequest(
@@ -486,6 +492,77 @@ const AdminApp = {
             console.error('Delete tenant error:', error);
             alert('Network error. Please try again.');
         }
+    },
+
+    // Show custom delete confirmation modal
+    showDeleteConfirmation(tenantName) {
+        return new Promise((resolve) => {
+            // Create modal HTML
+            const modalHtml = `
+                <div id="delete-confirmation-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div class="bg-gray-800 rounded-lg p-6 max-w-md mx-4 border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-white">Delete Tenant</h3>
+                        </div>
+                        <p class="text-gray-300 mb-6">
+                            Are you sure you want to delete tenant <strong class="text-white">"${tenantName}"</strong>? This action cannot be undone.
+                        </p>
+                        <div class="flex justify-end space-x-3">
+                            <button id="cancel-delete" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
+                                Cancel
+                            </button>
+                            <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
+                                Delete Tenant
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            const modal = document.getElementById('delete-confirmation-modal');
+            const cancelBtn = document.getElementById('cancel-delete');
+            const confirmBtn = document.getElementById('confirm-delete');
+            
+            // Handle cancel
+            const handleCancel = () => {
+                modal.remove();
+                resolve(false);
+            };
+            
+            // Handle confirm
+            const handleConfirm = () => {
+                modal.remove();
+                resolve(true);
+            };
+            
+            // Add event listeners
+            cancelBtn.addEventListener('click', handleCancel);
+            confirmBtn.addEventListener('click', handleConfirm);
+            
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    handleCancel();
+                }
+            });
+            
+            // Close on Escape key
+            const handleKeydown = (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel();
+                    document.removeEventListener('keydown', handleKeydown);
+                }
+            };
+            document.addEventListener('keydown', handleKeydown);
+        });
     },
 
     // Make authenticated API request

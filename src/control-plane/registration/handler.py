@@ -4,6 +4,7 @@ import uuid
 import os
 from datetime import datetime
 from typing import Dict, Any
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource('dynamodb')
 events_client = boto3.client('events')
@@ -43,17 +44,50 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'Tier must be either "basic" or "premium"'})
             }
         
+        # Normalize tenant name (lowercase, no spaces)
+        tenant_name = body['tenant_name'].lower().replace(' ', '-')
+        
+        # Check tenant name uniqueness
+        table = dynamodb.Table(TENANTS_TABLE)
+        existing_tenant = table.query(
+            IndexName='tenant-name-index',
+            KeyConditionExpression=Key('tenant_name').eq(tenant_name)
+        )
+        
+        if existing_tenant['Items']:
+            return {
+                'statusCode': 409,
+                'headers': cors_headers,
+                'body': json.dumps({'error': 'Tenant name already exists. Please choose a different name.'})
+            }
+        
+        # Get user pool IDs from CloudFormation (for now, until we store them)
+        cf_client = boto3.client('cloudformation')
+        app_plane_response = cf_client.describe_stacks(StackName='AgenticInsightsAppPlane')
+        
+        basic_user_pool_id = None
+        premium_user_pool_id = None
+        
+        for output in app_plane_response['Stacks'][0]['Outputs']:
+            if output['OutputKey'] == 'BasicTierUserPoolId':
+                basic_user_pool_id = output['OutputValue']
+            elif output['OutputKey'] == 'PremiumTierUserPoolId':
+                premium_user_pool_id = output['OutputValue']
+        
+        # Determine user pool ID based on tier
+        user_pool_id = premium_user_pool_id if body['tier'] == 'premium' else basic_user_pool_id
+        
         # Generate tenant ID
         tenant_id = str(uuid.uuid4())
         
         # Create tenant record
-        table = dynamodb.Table(TENANTS_TABLE)
         tenant_item = {
             'tenant_id': tenant_id,
-            'tenant_name': body['tenant_name'],
+            'tenant_name': tenant_name,  # Normalized name
             'tier': body['tier'],
             'status': 'provisioning',
             'admin_email': body['admin_email'],
+            'user_pool_id': user_pool_id,  # NEW: Store user pool ID
             'created_at': datetime.utcnow().isoformat(),
             'order_table_name': f"Orders-{tenant_id}" if body['tier'] == 'premium' else None
         }

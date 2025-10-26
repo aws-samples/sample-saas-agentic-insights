@@ -23,6 +23,13 @@ export class ControlPlaneStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // Add GSI for tenant name lookup
+    tenantsTable.addGlobalSecondaryIndex({
+      indexName: 'tenant-name-index',
+      partitionKey: { name: 'tenant_name', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // EventBridge custom bus for tenant provisioning
     this.eventBus = new events.EventBus(this, 'TenantProvisioningBus', {
       eventBusName: 'tenant-provisioning-bus',
@@ -74,6 +81,7 @@ export class ControlPlaneStack extends cdk.Stack {
       environment: {
         ADMIN_USER_POOL_ID: adminUserPool.userPoolId,
         ADMIN_USER_POOL_CLIENT_ID: adminUserPoolClient.userPoolClientId,
+        TENANTS_TABLE: tenantsTable.tableName,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -133,10 +141,18 @@ export class ControlPlaneStack extends cdk.Stack {
       },
     });
 
+    // Grant CloudFormation permissions to registration function (to get user pool IDs)
+    registrationFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['cloudformation:DescribeStacks'],
+      resources: [`arn:aws:cloudformation:${this.region}:${this.account}:stack/AgenticInsightsAppPlane/*`],
+    }));
+
     // Grant permissions
     tenantsTable.grantReadWriteData(registrationFunction);
     tenantsTable.grantReadWriteData(tenantManagementFunction);
     tenantsTable.grantReadWriteData(tenantProvisioningFunction);
+    tenantsTable.grantReadData(loginFunction);  // Login only needs read access
 
     // Grant Bedrock permissions to insight dashboard function
     insightDashboardApiFunction.addToRolePolicy(new iam.PolicyStatement({

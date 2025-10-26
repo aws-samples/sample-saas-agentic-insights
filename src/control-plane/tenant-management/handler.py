@@ -178,7 +178,7 @@ def create_tenant(event: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 def delete_tenant(tenant_id: str) -> Dict[str, Any]:
-    """Delete a tenant and associated resources"""
+    """Mark tenant as deleted and clean up associated resources"""
     try:
         table = dynamodb.Table(TENANTS_TABLE)
         
@@ -193,8 +193,16 @@ def delete_tenant(tenant_id: str) -> Dict[str, Any]:
         
         tenant = response['Item']
         
-        # Delete tenant record
-        table.delete_item(Key={'tenant_id': tenant_id})
+        # Mark tenant as deleted instead of removing the record
+        table.update_item(
+            Key={'tenant_id': tenant_id},
+            UpdateExpression='SET #status = :status, deleted_at = :deleted_at',
+            ExpressionAttributeNames={'#status': 'status'},
+            ExpressionAttributeValues={
+                ':status': 'deleted',
+                ':deleted_at': datetime.utcnow().isoformat()
+            }
+        )
         
         # TODO: Add cleanup logic for:
         # - Cognito users
