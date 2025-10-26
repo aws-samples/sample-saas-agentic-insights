@@ -14,7 +14,7 @@ interface MetricsFrameworkStackProps extends cdk.StackProps {
 export class MetricsFrameworkStack extends cdk.Stack {
   public readonly metricsTable: dynamodb.Table;
   public readonly metricsCollectorLayer: lambda.LayerVersion;
-  public readonly metricsAggregationTable: dynamodb.Table;
+  public readonly costAggregationTable: dynamodb.Table;
   public readonly costPerTenantTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: MetricsFrameworkStackProps) {
@@ -46,8 +46,8 @@ export class MetricsFrameworkStack extends cdk.Stack {
     });
 
     // DynamoDB table for aggregated metrics (monthly aggregation)
-    this.metricsAggregationTable = new dynamodb.Table(this, 'MetricsAggregationTable', {
-      tableName: 'AgenticInsights-MetricsAggregation',
+    this.costAggregationTable = new dynamodb.Table(this, 'CostAggregationTable', {
+      tableName: 'AgenticInsights-CostAggregation',
       partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'metric_date_type', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -56,7 +56,7 @@ export class MetricsFrameworkStack extends cdk.Stack {
     });
 
     // GSI for month-based queries
-    this.metricsAggregationTable.addGlobalSecondaryIndex({
+    this.costAggregationTable.addGlobalSecondaryIndex({
       indexName: 'MonthIndex',
       partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'metric_type', type: dynamodb.AttributeType.STRING },
@@ -97,31 +97,31 @@ export class MetricsFrameworkStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
     });
 
-    // MetricsAggregatorService Lambda function
-    const metricsAggregatorService = new lambda.Function(this, 'MetricsAggregatorService', {
+    // CostAggregatorService Lambda function
+    const costAggregatorService = new lambda.Function(this, 'CostAggregatorService', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset('src/control-plane/metrics-aggregator'),
+      code: lambda.Code.fromAsset('src/control-plane/cost-analysis/cost-aggregator'),
       environment: {
-        METRICS_AGGREGATION_TABLE_NAME: this.metricsAggregationTable.tableName,
+        COST_AGGREGATION_TABLE_NAME: this.costAggregationTable.tableName,
       },
       timeout: cdk.Duration.seconds(60),
     });
 
-    // CostAggregatorService Lambda function (processes MetricsAggregation stream)
-    const costAggregatorService = new lambda.Function(this, 'CostAggregatorService', {
+    // CostPerTenantService Lambda function (processes MetricsAggregation stream)
+    const costPerTenantService = new lambda.Function(this, 'CostPerTenantService', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset('src/control-plane/cost-aggregator'),
+      code: lambda.Code.fromAsset('src/control-plane/cost-analysis/cost-per-tenant'),
       environment: {
         COST_PER_TENANT_TABLE_NAME: this.costPerTenantTable.tableName,
-        METRICS_AGGREGATION_TABLE_NAME: this.metricsAggregationTable.tableName,
+        COST_AGGREGATION_TABLE_NAME: this.costAggregationTable.tableName,
       },
       timeout: cdk.Duration.seconds(60),
     });
 
     // Add DynamoDB stream event sources
-    metricsAggregatorService.addEventSource(
+    costAggregatorService.addEventSource(
       new DynamoEventSource(this.metricsTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 10,
@@ -129,7 +129,7 @@ export class MetricsFrameworkStack extends cdk.Stack {
       })
     );
 
-    costAggregatorService.addEventSource(new DynamoEventSource(this.metricsAggregationTable, {
+    costPerTenantService.addEventSource(new DynamoEventSource(this.costAggregationTable, {
       startingPosition: lambda.StartingPosition.LATEST,
       batchSize: 10,
       retryAttempts: 3,
@@ -137,10 +137,10 @@ export class MetricsFrameworkStack extends cdk.Stack {
 
     // Grant permissions
     this.metricsTable.grantWriteData(metricsService);
-    this.metricsTable.grantReadData(metricsAggregatorService);
-    this.metricsAggregationTable.grantReadWriteData(metricsAggregatorService);
-    this.metricsAggregationTable.grantReadData(costAggregatorService);
-    this.costPerTenantTable.grantReadWriteData(costAggregatorService);
+    this.metricsTable.grantReadData(costAggregatorService);
+    this.costAggregationTable.grantReadWriteData(costAggregatorService);
+    this.costAggregationTable.grantReadData(costPerTenantService);
+    this.costPerTenantTable.grantReadWriteData(costPerTenantService);
 
     // EventBridge rule for metrics processing (reuse existing bus)
     new events.Rule(this, 'MetricsProcessingRule', {
@@ -163,9 +163,9 @@ export class MetricsFrameworkStack extends cdk.Stack {
       description: 'Lambda Layer ARN for metrics collection',
     });
 
-    new cdk.CfnOutput(this, 'MetricsAggregationTableName', {
-      value: this.metricsAggregationTable.tableName,
-      description: 'DynamoDB table for aggregated metrics',
+    new cdk.CfnOutput(this, 'CostAggregationTableName', {
+      value: this.costAggregationTable.tableName,
+      description: 'DynamoDB table for aggregated cost metrics',
     });
 
     new cdk.CfnOutput(this, 'CostPerTenantTableName', {

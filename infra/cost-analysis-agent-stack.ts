@@ -9,7 +9,7 @@ import { Construct } from 'constructs';
 
 interface CostAnalysisAgentStackProps extends cdk.StackProps {
   metricsTable: dynamodb.Table;
-  metricsAggregationTable: dynamodb.Table;
+  costAggregationTable: dynamodb.Table;
   costPerTenantTable: dynamodb.Table;
 }
 

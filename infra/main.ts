@@ -45,7 +45,7 @@ const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsC
     region: process.env.CDK_DEFAULT_REGION,
   },
   metricsTable: metricsFrameworkStack.metricsTable,
-  metricsAggregationTable: metricsFrameworkStack.metricsAggregationTable,
+  costAggregationTable: metricsFrameworkStack.costAggregationTable,
   costPerTenantTable: metricsFrameworkStack.costPerTenantTable,
 });
 

@@ -61,7 +61,7 @@ def parse_dynamodb_map(dynamodb_map):
 def aggregate_usage_metrics(tenant_id, date, event_type, metadata, tier_name):
     """Aggregate usage metrics by type for AI Agent processing"""
     
-    aggregation_table = boto3.resource('dynamodb').Table(os.environ['METRICS_AGGREGATION_TABLE_NAME'])
+    aggregation_table = boto3.resource('dynamodb').Table(os.environ['COST_AGGREGATION_TABLE_NAME'])
     
     # Get estimated cost from metadata
     estimated_cost = metadata.get('estimated_cost', 0)
