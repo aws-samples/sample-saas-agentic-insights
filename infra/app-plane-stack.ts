@@ -199,8 +199,20 @@ export class AppPlaneStack extends cdk.Stack {
       actions: [
         'cognito-idp:AdminCreateUser',
         'cognito-idp:AdminSetUserPassword',
+        'cognito-idp:AdminConfirmSignUp',
       ],
-      resources: [basicTierUserPool.userPoolArn, premiumTierUserPool.userPoolArn],
+      resources: [
+        basicTierUserPool.userPoolArn, 
+        premiumTierUserPool.userPoolArn,
+        `arn:aws:cognito-idp:${this.region}:${this.account}:userpool/*`  // Allow access to dynamically created Premium pools
+      ],
+    }));
+
+    // Grant Tenants table read access to user creation service (for Premium tenant pool lookup)
+    userCreationFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['dynamodb:GetItem'],
+      resources: [`arn:aws:dynamodb:${this.region}:${this.account}:table/Tenants`],
     }));
 
     // Grant Cognito permissions to user service

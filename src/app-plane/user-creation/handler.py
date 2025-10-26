@@ -9,9 +9,11 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 cognito_client = boto3.client('cognito-idp')
+dynamodb = boto3.resource('dynamodb')
 
 BASIC_USER_POOL_ID = os.environ['BASIC_USER_POOL_ID']
 PREMIUM_USER_POOL_ID = os.environ['PREMIUM_USER_POOL_ID']
+TENANTS_TABLE = 'Tenants'
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Handle user creation events from EventBridge"""
@@ -56,7 +58,41 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {'statusCode': 400, 'body': 'Invalid event data'}
         
         # Determine user pool based on tier
-        user_pool_id = PREMIUM_USER_POOL_ID if tier == 'premium' else BASIC_USER_POOL_ID
+        if tier == 'premium':
+            # Get dedicated user pool ID from tenant record
+            try:
+                tenants_table = dynamodb.Table(TENANTS_TABLE)
+                tenant_response = tenants_table.get_item(Key={'tenant_id': tenant_id})
+                
+                if 'Item' not in tenant_response or not tenant_response['Item'].get('user_pool_id'):
+                    logger.error(json.dumps({
+                        "event": "premium_user_pool_not_found",
+                        "request_id": request_id,
+                        "tenant_id": tenant_id,
+                        "error": "Premium tenant user pool ID not found in Tenants table"
+                    }))
+                    return {'statusCode': 500, 'body': 'Premium tenant user pool not provisioned'}
+                
+                user_pool_id = tenant_response['Item']['user_pool_id']
+                
+                logger.info(json.dumps({
+                    "event": "premium_user_pool_retrieved",
+                    "request_id": request_id,
+                    "tenant_id": tenant_id,
+                    "user_pool_id": user_pool_id
+                }))
+                
+            except Exception as e:
+                logger.error(json.dumps({
+                    "event": "tenant_lookup_failed",
+                    "request_id": request_id,
+                    "tenant_id": tenant_id,
+                    "error": str(e)
+                }))
+                return {'statusCode': 500, 'body': 'Failed to lookup tenant user pool'}
+        else:
+            # Use shared Basic pool
+            user_pool_id = BASIC_USER_POOL_ID
         
         logger.info(json.dumps({
             "event": "user_pool_selected",

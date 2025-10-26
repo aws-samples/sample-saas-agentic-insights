@@ -179,9 +179,17 @@ export class ControlPlaneStack extends cdk.Stack {
         'dynamodb:TagResource',
         'lambda:UpdateFunctionConfiguration',
         'lambda:GetFunction',
+        'cognito-idp:CreateUserPool',
+        'cognito-idp:CreateUserPoolClient',
+        'cognito-idp:DeleteUserPool',
+        'cognito-idp:DescribeUserPool',
+        'cognito-idp:TagResource',
       ],
       resources: ['*'],
     }));
+
+    // Grant EventBridge permissions to tenant provisioning function
+    this.eventBus.grantPutEventsTo(tenantProvisioningFunction);
 
     // API Gateway for Control Plane
     this.controlPlaneApi = new apigateway.RestApi(this, 'ControlPlaneApi', {

@@ -61,21 +61,22 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'Tenant name already exists. Please choose a different name.'})
             }
         
-        # Get user pool IDs from CloudFormation (for now, until we store them)
+        # Get user pool IDs from CloudFormation (for Basic tier only)
         cf_client = boto3.client('cloudformation')
         app_plane_response = cf_client.describe_stacks(StackName='AgenticInsightsAppPlane')
         
         basic_user_pool_id = None
-        premium_user_pool_id = None
         
         for output in app_plane_response['Stacks'][0]['Outputs']:
             if output['OutputKey'] == 'BasicTierUserPoolId':
                 basic_user_pool_id = output['OutputValue']
-            elif output['OutputKey'] == 'PremiumTierUserPoolId':
-                premium_user_pool_id = output['OutputValue']
+                break
         
         # Determine user pool ID based on tier
-        user_pool_id = premium_user_pool_id if body['tier'] == 'premium' else basic_user_pool_id
+        if body['tier'] == 'premium':
+            user_pool_id = None  # Will be set by provisioning service
+        else:
+            user_pool_id = basic_user_pool_id  # Use shared Basic pool
         
         # Generate tenant ID
         tenant_id = str(uuid.uuid4())
@@ -87,7 +88,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'tier': body['tier'],
             'status': 'provisioning',
             'admin_email': body['admin_email'],
-            'user_pool_id': user_pool_id,  # NEW: Store user pool ID
+            'user_pool_id': user_pool_id,  # None for Premium initially, set by provisioning
             'created_at': datetime.utcnow().isoformat(),
             'order_table_name': f"Orders-{tenant_id}" if body['tier'] == 'premium' else None
         }
@@ -102,11 +103,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Detail': json.dumps({
                     'tenant_id': tenant_id,
                     'tier': body['tier'],
-                    'tenant_name': body['tenant_name']
+                    'tenant_name': body['tenant_name'],
+                    'admin_email': body['admin_email'],  # Include admin credentials for Premium provisioning
+                    'admin_password': body['admin_password']
                 }),
                 'EventBusName': EVENT_BUS_NAME
-            },
-            {
+            }
+        ]
+        
+        # For Basic tier, also fire user creation event immediately since no provisioning delay
+        if body['tier'] == 'basic':
+            events.append({
                 'Source': 'tenant.service',
                 'DetailType': 'Admin User Creation Requested',
                 'Detail': json.dumps({
@@ -117,8 +124,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'role': 'tenant_admin'
                 }),
                 'EventBusName': EVENT_BUS_NAME
-            }
-        ]
+            })
         
         try:
             events_client.put_events(Entries=events)
