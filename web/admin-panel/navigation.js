@@ -132,6 +132,10 @@ class NavigationController {
                                 <input type="email" id="tenant-email" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white">
                             </div>
                             <div class="mb-4">
+                                <label for="tenant-password" class="block text-sm font-medium text-gray-300 mb-2">Admin Password</label>
+                                <input type="password" id="tenant-password" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white" placeholder="Minimum 8 characters">
+                            </div>
+                            <div class="mb-4">
                                 <label for="tenant-tier" class="block text-sm font-medium text-gray-300 mb-2">Tier</label>
                                 <select id="tenant-tier" required class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none text-white">
                                     <option value="">Select Tier</option>

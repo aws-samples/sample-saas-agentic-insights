@@ -30,6 +30,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Update tenant status to active for basic tier
         if tier == 'basic':
+            # Fire user creation event for basic tier
+            if admin_email and admin_password:
+                fire_user_creation_event(tenant_id, tier, admin_email, admin_password)
+            
             update_tenant_status(tenant_id, 'active')
             print(f"Basic tier tenant {tenant_id} provisioned successfully")
             return {'statusCode': 200, 'body': 'Basic tenant provisioned'}

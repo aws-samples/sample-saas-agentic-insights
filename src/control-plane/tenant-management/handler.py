@@ -95,7 +95,7 @@ def list_tenants() -> Dict[str, Any]:
         }
 
 def create_tenant(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a new tenant (admin operation)"""
+    """Create a new tenant (centralized onboarding logic)"""
     try:
         body = json.loads(event['body']) if isinstance(event.get('body'), str) else event.get('body', {})
         
@@ -105,7 +105,7 @@ def create_tenant(event: Dict[str, Any]) -> Dict[str, Any]:
             if not body.get(field):
                 return {
                     'statusCode': 400,
-                    'headers': {'Content-Type': 'application/json'},
+                    'headers': cors_headers,
                     'body': json.dumps({'error': f'Missing required field: {field}'})
                 }
         
@@ -113,21 +113,55 @@ def create_tenant(event: Dict[str, Any]) -> Dict[str, Any]:
         if body['tier'] not in ['basic', 'premium']:
             return {
                 'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
+                'headers': cors_headers,
                 'body': json.dumps({'error': 'Tier must be either "basic" or "premium"'})
+            }
+        
+        # Normalize tenant name for consistency
+        normalized_name = body['tenant_name'].lower().replace(' ', '-')
+        
+        # Check for duplicate tenant name
+        table = dynamodb.Table(TENANTS_TABLE)
+        response = table.query(
+            IndexName='tenant-name-index',
+            KeyConditionExpression=Key('tenant_name').eq(normalized_name)
+        )
+        
+        if response['Items']:
+            return {
+                'statusCode': 409,
+                'headers': cors_headers,
+                'body': json.dumps({'error': f'Tenant name "{body["tenant_name"]}" already exists'})
             }
         
         # Generate tenant ID
         tenant_id = str(uuid.uuid4())
         
+        # Determine user pool ID based on tier
+        user_pool_id = None
+        if body['tier'] == 'premium':
+            user_pool_id = None  # Will be created by provisioning service
+        else:
+            # Get Basic tier user pool ID from CloudFormation
+            try:
+                import boto3
+                cf_client = boto3.client('cloudformation')
+                response = cf_client.describe_stacks(StackName='AgenticInsightsAppPlane')
+                for output in response['Stacks'][0]['Outputs']:
+                    if output['OutputKey'] == 'BasicTierUserPoolId':
+                        user_pool_id = output['OutputValue']
+                        break
+            except Exception as e:
+                print(f"Failed to get Basic user pool ID: {str(e)}")
+        
         # Create tenant record
-        table = dynamodb.Table(TENANTS_TABLE)
         tenant_item = {
             'tenant_id': tenant_id,
-            'tenant_name': body['tenant_name'],
+            'tenant_name': normalized_name,
             'tier': body['tier'],
             'status': 'provisioning',
             'admin_email': body['admin_email'],
+            'user_pool_id': user_pool_id,
             'created_at': datetime.utcnow().isoformat(),
             'order_table_name': f"Orders-{tenant_id}" if body['tier'] == 'premium' else None
         }
@@ -135,17 +169,24 @@ def create_tenant(event: Dict[str, Any]) -> Dict[str, Any]:
         table.put_item(Item=tenant_item)
         
         # Publish tenant creation event for provisioning
+        event_detail = {
+            'tenant_id': tenant_id,
+            'tier': body['tier'],
+            'tenant_name': body['tenant_name'],
+            'admin_email': body['admin_email']
+        }
+        
+        # Include password if provided (from registration service)
+        if body.get('admin_password'):
+            event_detail['admin_password'] = body['admin_password']
+        
         try:
             events_client.put_events(
                 Entries=[
                     {
                         'Source': 'tenant.service',
                         'DetailType': 'Tenant Created',
-                        'Detail': json.dumps({
-                            'tenant_id': tenant_id,
-                            'tier': body['tier'],
-                            'tenant_name': body['tenant_name']
-                        }),
+                        'Detail': json.dumps(event_detail),
                         'EventBusName': EVENT_BUS_NAME
                     }
                 ]

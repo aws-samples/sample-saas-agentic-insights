@@ -61,14 +61,25 @@ export class ControlPlaneStack extends cdk.Stack {
       },
     });
 
-    // Registration Service Lambda
+    // Tenant Management Service Lambda
+    const tenantManagementFunction = new lambda.Function(this, 'TenantManagementFunction', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('src/control-plane/tenant-management'),
+      environment: {
+        TENANTS_TABLE: tenantsTable.tableName,
+        EVENT_BUS_NAME: this.eventBus.eventBusName,
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // Registration Service Lambda (calls tenant management)
     const registrationFunction = new lambda.Function(this, 'RegistrationFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/control-plane/registration'),
       environment: {
-        TENANTS_TABLE: tenantsTable.tableName,
-        EVENT_BUS_NAME: this.eventBus.eventBusName,
+        TENANT_MANAGEMENT_FUNCTION: tenantManagementFunction.functionName,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -105,18 +116,6 @@ export class ControlPlaneStack extends cdk.Stack {
       resources: ['*']
     }));
 
-    // Tenant Management Service Lambda
-    const tenantManagementFunction = new lambda.Function(this, 'TenantManagementFunction', {
-      runtime: lambda.Runtime.PYTHON_3_11,
-      handler: 'handler.handler',
-      code: lambda.Code.fromAsset('src/control-plane/tenant-management'),
-      environment: {
-        TENANTS_TABLE: tenantsTable.tableName,
-        EVENT_BUS_NAME: this.eventBus.eventBusName,
-      },
-      timeout: cdk.Duration.seconds(30),
-    });
-
     // Tenant Provisioning Service Lambda
     const tenantProvisioningFunction = new lambda.Function(this, 'TenantProvisioningFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
@@ -141,15 +140,15 @@ export class ControlPlaneStack extends cdk.Stack {
       },
     });
 
-    // Grant CloudFormation permissions to registration function (to get user pool IDs)
-    registrationFunction.addToRolePolicy(new iam.PolicyStatement({
+    // Grant CloudFormation permissions to tenant management function (to get user pool IDs)
+    tenantManagementFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['cloudformation:DescribeStacks'],
       resources: [`arn:aws:cloudformation:${this.region}:${this.account}:stack/AgenticInsightsAppPlane/*`],
     }));
 
     // Grant permissions
-    tenantsTable.grantReadWriteData(registrationFunction);
+    tenantManagementFunction.grantInvoke(registrationFunction);
     tenantsTable.grantReadWriteData(tenantManagementFunction);
     tenantsTable.grantReadWriteData(tenantProvisioningFunction);
     tenantsTable.grantReadData(loginFunction);  // Login only needs read access
@@ -167,7 +166,6 @@ export class ControlPlaneStack extends cdk.Stack {
       ],
     }));
 
-    this.eventBus.grantPutEventsTo(registrationFunction);
     this.eventBus.grantPutEventsTo(tenantManagementFunction);
 
     // Grant CDK permissions to tenant provisioning function for dynamic resource creation

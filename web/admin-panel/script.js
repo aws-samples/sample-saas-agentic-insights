@@ -375,12 +375,19 @@ const AdminApp = {
         const formData = {
             tenant_name: document.getElementById('tenant-name').value.trim(),
             admin_email: document.getElementById('tenant-email').value.trim(),
+            admin_password: document.getElementById('tenant-password').value.trim(),
             tier: document.getElementById('tenant-tier').value
         };
         
         // Validate
-        if (!formData.tenant_name || !formData.admin_email || !formData.tier) {
+        if (!formData.tenant_name || !formData.admin_email || !formData.admin_password || !formData.tier) {
             this.showTenantError('Please fill in all required fields');
+            return;
+        }
+        
+        // Validate password length
+        if (formData.admin_password.length < 8) {
+            this.showTenantError('Password must be at least 8 characters long');
             return;
         }
         
