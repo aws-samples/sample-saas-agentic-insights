@@ -45,59 +45,41 @@ def handler(event, context):
                     'body': json.dumps({'error': 'Cost analysis agent not configured'})
                 }
             
-            return_format = """
+            prompt = """
+            Analyze the cost per-tenant dataset and provide:
+            
+            1. TREND ANALYSIS: Examine cost and margin trends over the last 6 months for both Basic and Premium tiers. Identify the 5 most important cost per-tenant and margin trends, variations and deep insights.
+            
+            2. PREDICTIVE ANALYSIS: Examine predicted cost and margin data over next 6 months. Forecast the 5 most important trends, patterns, tier-specific growth and deep insights.
+            
+ 
+
+            Return ONLY a JSON object in this exact format:
             {
-                "trends": [
-                    {trend 1}, {trend 2}, ...
-                ],
-                "predictions": [
-                    {prediction 1}, {prediction 2}, ...
-                ],
-                "recommendations": [
-                    {recommendation 1}, {recommendation 2}, ...
-                ],
-                "cost_per_tenant_averages": [
-                    {"month": "YYYY-MM", "tier": "basic | premium", "cost": xx.x, "revenue": xx.x, "margin": xx.x},
-                    ...include all the cost_per_tenant_averages data you retrieved...
-                ],
-                "cost_per_tenant_predictions": [
-                    {"month": "YYYY-MM", "tier": "basic | premium", "predicted_cost": xx.x, "confidence_low": xx.x, "confidence_high": xx.x, "revenue": xx.x, "predicted_margin": xx.x},
-                    ...include all the cost_per_tenant_predictions data you retrieved...
-                ]
-                
-            } """
-
-            prompt = f"""
-            Analyze the "average cost per-tenant, per-month dataset" and provide:
-            
-            1. TREND ANALYSIS: Examine “average cost and margin per-tenant, per-month dataset” over the last 6 months for both Basic and Premium tiers and Identify most important 5 cost per-tenant and margin trends, variations and important deep insights. 
-            
-            2. PREDICTIVE ANALYSIS: Examine “predicted cost and margin per-tenant, per-month dataset” over next 6 months and Forecast most important 5 trends, patterns, tier-specific growth and deep insights. 
-            
-            3. RECOMMENDATIONS: Refer to the TREND ANALYSIS, PREDICTIVE ANALYSIS and the cost per-tenant averages and cost per-tenant predictions DATASETS, and then identify most critical and important 5 actionable cost/infrastructure optimization action items for the SaaS provider to improve the revenue/margin. Do NOT just provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Dive deeper, be specific and use data-driven analysis to provide recommendations. I need to see dollar values, % values, numbers in these recommendations to convince the SaaS provider. 
-
-            In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and each item MUST NOT exceed more than 100 characters in size including space. 
-            
-            STRICTLY use this return JSON format : {return_format}  
+                "trends": ["trend 1", "trend 2", "trend 3", "trend 4", "trend 5"],
+                "predictions": ["prediction 1", "prediction 2", "prediction 3", "prediction 4", "prediction 5"],
+                "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3", "recommendation 4", "recommendation 5"]
+            }
             """
             
             try:
                 print(f"Invoking cost analysis agent: {cost_analysis_agent_id}")
+                
+                # Use the correct invoke_agent API
                 response = bedrock_agent_runtime.invoke_agent(
                     agentId=cost_analysis_agent_id,
                     agentAliasId=cost_analysis_agent_alias_id,
-                    sessionId=f"cost-analysis-session-{context.aws_request_id}",
+                    sessionId=f"cost-analysis-session-{int(time.time())}",
                     inputText=prompt
                 )
                 
                 # Process streaming response
                 result_text = ""
-                for event_chunk in response['completion']:
-                    if 'chunk' in event_chunk:
-                        chunk_data = event_chunk['chunk']
-                        if 'bytes' in chunk_data:
-                            decoded_text = chunk_data['bytes'].decode('utf-8')
-                            result_text += decoded_text
+                for event in response['completion']:
+                    if 'chunk' in event:
+                        chunk = event['chunk']
+                        if 'bytes' in chunk:
+                            result_text += chunk['bytes'].decode('utf-8')
                 
                 response_body = {
                     'success': True,
