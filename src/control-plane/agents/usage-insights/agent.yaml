@@ -1,0 +1,81 @@
+name: usage-insights-agent
+version: 1.0.0
+foundation_model: anthropic.claude-3-haiku-20240307-v1:0
+description: "AI agent for advanced usage analytics including TTV, CLTV, engagement, and at-risk feature identification"
+
+tools:
+  - name: calculate_time_to_value
+    description: "Calculate Time to Value metrics for tenants"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze (or 'all' for platform-wide)"
+        date_range:
+          type: object
+          properties:
+            start_date:
+              type: string
+              description: "Start date (YYYY-MM-DD)"
+            end_date:
+              type: string
+              description: "End date (YYYY-MM-DD)"
+      required: ["tenant_id"]
+
+  - name: project_customer_lifetime_value
+    description: "Project Customer Lifetime Value for tenants"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze (or 'all' for platform-wide)"
+        projection_months:
+          type: integer
+          description: "Number of months to project (default: 12)"
+          default: 12
+      required: ["tenant_id"]
+
+  - name: analyze_feature_adoption_rates
+    description: "Analyze feature adoption rates across tenants"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze (or 'all' for platform-wide)"
+        time_period_days:
+          type: integer
+          description: "Time period in days for adoption calculation (default: 30)"
+          default: 30
+      required: ["tenant_id"]
+
+  - name: calculate_engagement_scores
+    description: "Calculate user engagement scores"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze"
+        user_id:
+          type: string
+          description: "Specific user ID (optional, omit for all users)"
+      required: ["tenant_id"]
+
+  - name: identify_at_risk_features
+    description: "Identify features with declining usage or low adoption"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze (or 'all' for platform-wide)"
+        analysis_period_days:
+          type: integer
+          description: "Period for trend analysis (default: 90)"
+          default: 90
+      required: ["tenant_id"]
+
+system_prompt_file: prompts/system_prompt.txt

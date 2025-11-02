@@ -3,6 +3,8 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as logs_destinations from 'aws-cdk-lib/aws-logs-destinations';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
@@ -13,9 +15,11 @@ interface MetricsFrameworkStackProps extends cdk.StackProps {
 
 export class MetricsFrameworkStack extends cdk.Stack {
   public readonly metricsTable: dynamodb.Table;
+  public readonly usageMetricsTable: dynamodb.Table;
   public readonly metricsCollectorLayer: lambda.LayerVersion;
   public readonly costAggregationTable: dynamodb.Table;
   public readonly costPerTenantTable: dynamodb.Table;
+  private usageMetricsAggregator?: lambda.Function;
 
   constructor(scope: Construct, id: string, props: MetricsFrameworkStackProps) {
     super(scope, id, props);
@@ -76,6 +80,52 @@ export class MetricsFrameworkStack extends cdk.Stack {
       indexName: 'MonthIndex',
       partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'tier', type: dynamodb.AttributeType.STRING },
+    });
+
+    // DynamoDB table for enhanced usage metrics (with TTL-based retention)
+    this.usageMetricsTable = new dynamodb.Table(this, 'UsageMetricsTable', {
+      tableName: 'AgenticInsights-UsageMetrics',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'ttl',
+      pointInTimeRecovery: true,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // GSI 1: MonthIndex - For monthly queries and trend analysis
+    this.usageMetricsTable.addGlobalSecondaryIndex({
+      indexName: 'MonthIndex',
+      partitionKey: { name: 'month', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI 2: FeatureIndex - For feature-specific queries
+    this.usageMetricsTable.addGlobalSecondaryIndex({
+      indexName: 'FeatureIndex',
+      partitionKey: { name: 'feature_name', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'tenant_timestamp', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI 3: PlatformIndex - For cross-tenant platform analytics
+    this.usageMetricsTable.addGlobalSecondaryIndex({
+      indexName: 'PlatformIndex',
+      partitionKey: { name: 'metric_type_month', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'aggregation_level', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI 4: TenantTimestampIndex - Optimized for TTV first interaction queries
+    // Enables direct timestamp-based queries without month-by-month iteration
+    this.usageMetricsTable.addGlobalSecondaryIndex({
+      indexName: 'TenantTimestampIndex',
+      partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.INCLUDE,
+      nonKeyAttributes: ['usage_count', 'feature_name', 'metric_type'],
     });
 
     // Lambda Layer for metrics collection
@@ -152,6 +202,23 @@ export class MetricsFrameworkStack extends cdk.Stack {
       targets: [new targets.LambdaFunction(metricsService)],
     });
 
+// Usage Metrics Aggregator Lambda function (processes CloudWatch Logs)
+    this.usageMetricsAggregator = new lambda.Function(this, 'UsageMetricsAggregator', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.lambda_handler',
+      code: lambda.Code.fromAsset('src/control-plane/usage-metrics-aggregator'),
+      environment: {
+        USAGE_METRICS_TABLE_NAME: this.usageMetricsTable.tableName,
+        AGGREGATION_INTERVAL: 'hourly',
+        BATCH_SIZE: '25',
+      },
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+    });
+
+    // Grant permissions to usage metrics aggregator
+    this.usageMetricsTable.grantReadWriteData(this.usageMetricsAggregator);
+
     // Outputs
     new cdk.CfnOutput(this, 'MetricsTableName', {
       value: this.metricsTable.tableName,
@@ -163,6 +230,16 @@ export class MetricsFrameworkStack extends cdk.Stack {
       description: 'Lambda Layer ARN for metrics collection',
     });
 
+    new cdk.CfnOutput(this, 'UsageMetricsTableName', {
+      value: this.usageMetricsTable.tableName,
+      description: 'DynamoDB table for enhanced usage metrics with aggregations',
+    });
+
+    new cdk.CfnOutput(this, 'UsageMetricsAggregatorArn', {
+      value: this.usageMetricsAggregator.functionArn,
+      description: 'Lambda function ARN for usage metrics aggregation',
+    });
+
     new cdk.CfnOutput(this, 'CostAggregationTableName', {
       value: this.costAggregationTable.tableName,
       description: 'DynamoDB table for aggregated cost metrics',
@@ -172,5 +249,15 @@ export class MetricsFrameworkStack extends cdk.Stack {
       value: this.costPerTenantTable.tableName,
       description: 'DynamoDB table for cost per tenant data',
     });
+  }
+  /**
+     * Get the usage metrics aggregator Lambda function
+     * This is used by AppPlaneStack to create the subscription filter
+     */
+  public getUsageMetricsAggregator(): lambda.IFunction {
+    if (!this.usageMetricsAggregator) {
+      throw new Error('Usage metrics aggregator not initialized');
+    }
+    return this.usageMetricsAggregator;
   }
 }
