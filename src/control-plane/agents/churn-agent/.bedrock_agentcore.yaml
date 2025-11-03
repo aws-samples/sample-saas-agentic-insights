@@ -1,0 +1,47 @@
+default_agent: churn_agent
+agents:
+  churn_agent:
+    name: churn_agent
+    entrypoint: /Users/fredscho/Code/agentic-insights-saas/src/control-plane/agents/churn-agent/main.py
+    platform: linux/arm64
+    container_runtime: docker
+    source_path: /Users/fredscho/Code/agentic-insights-saas/src/control-plane/agents/churn-agent
+    aws:
+      execution_role: null
+      execution_role_auto_create: true
+      account: '592872546055'
+      region: us-east-1
+      ecr_repository: null
+      ecr_auto_create: true
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: null
+      agent_arn: null
+      agent_session_id: null
+    codebuild:
+      project_name: null
+      execution_role: null
+      source_bucket: null
+    memory:
+      mode: STM_ONLY
+      memory_id: null
+      memory_arn: null
+      memory_name: churn_agent_memory
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        discoveryUrl: https://foo-bar.auth.us-east-1.amazoncognito.com
+        allowedClients:
+        - 66642rbk2h4iqh39bhq1o64q8d
+    request_header_configuration:
+      requestHeaderAllowlist:
+      - Authorization
+    oauth_configuration: null
