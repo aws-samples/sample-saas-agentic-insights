@@ -87,13 +87,13 @@ check_prerequisites() {
     fi
     
     # Check Bedrock CLI access
-    if ! aws bedrock-agent list-agents --max-results 1 &> /dev/null; then
+    if ! command -v aws bedrock-agent list-agents --max-results 1 &> /dev/null; then
         print_error "AWS Bedrock Agent access not available. Please ensure you have proper permissions."
         exit 1
     fi
     
     # Check AWS credentials
-    if ! aws sts get-caller-identity &> /dev/null; then
+    if ! command -v aws sts get-caller-identity &> /dev/null; then
         print_error "AWS credentials not configured. Please run 'aws configure'."
         exit 1
     fi
@@ -105,17 +105,17 @@ check_prerequisites() {
     fi
     
     # Check base infrastructure exists
-    if ! aws cloudformation describe-stacks --stack-name AgenticInsightsControlPlane &> /dev/null; then
+    if ! command -v aws cloudformation describe-stacks --stack-name AgenticInsightsControlPlane &> /dev/null; then
         print_error "Base architecture not found. Please run lab-01.1-deploy-base-architecture.sh first."
         exit 1
     fi
     
-    if ! aws cloudformation describe-stacks --stack-name AgenticInsightsAppPlane &> /dev/null; then
+    if ! command -v aws cloudformation describe-stacks --stack-name AgenticInsightsAppPlane &> /dev/null; then
         print_error "Application plane not found. Please run lab-01.1-deploy-base-architecture.sh first."
         exit 1
     fi
     
-    if ! aws cloudformation describe-stacks --stack-name AgenticInsightsMetricsFramework &> /dev/null; then
+    if ! command -v aws cloudformation describe-stacks --stack-name AgenticInsightsMetricsFramework &> /dev/null; then
         print_error "Metrics framework not found. Please run lab-02.1-metering-framework-with-cost-analysis-agent.sh first."
         exit 1
     fi
@@ -146,8 +146,8 @@ check_prerequisites() {
 get_aws_context() {
     print_status "Getting AWS context..."
     
-    AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
     AWS_REGION=$(aws configure get region)
+    AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
     
     if [ -z "$AWS_REGION" ]; then
         print_error "AWS region is not set. Please configure your AWS region."
