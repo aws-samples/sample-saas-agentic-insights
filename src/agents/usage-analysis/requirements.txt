@@ -1,0 +1,2 @@
+boto3>=1.26.0
+strands-sdk>=1.0.0

@@ -1,0 +1,90 @@
+name: usage-analysis-agent
+version: 1.0.0
+foundation_model: anthropic.claude-3-haiku-20240307-v1:0
+description: "AI agent for analyzing usage patterns and providing insights"
+
+tools:
+  - name: analyze_tenant_usage
+    description: "Analyze comprehensive usage metrics for a specific tenant"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze (or 'all' for platform admin)"
+        date_range:
+          type: object
+          properties:
+            start_date:
+              type: string
+              description: "Start date (YYYY-MM-DD)"
+            end_date:
+              type: string
+              description: "End date (YYYY-MM-DD)"
+        user_role:
+          type: string
+          enum: ["platform_admin", "tenant_admin", "tenant_user"]
+          description: "Role of requesting user for access control"
+        user_id:
+          type: string
+          description: "User ID for tenant_user role filtering"
+      required: ["tenant_id", "user_role"]
+
+  - name: analyze_feature_adoption
+    description: "Analyze feature adoption patterns and utilization rates"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze"
+        scope:
+          type: string
+          enum: ["platform", "tenant", "user"]
+          description: "Analysis scope based on user role"
+        user_role:
+          type: string
+          enum: ["platform_admin", "tenant_admin", "tenant_user"]
+          description: "Role of requesting user for access control"
+      required: ["tenant_id", "scope"]
+
+  - name: analyze_performance_metrics
+    description: "Analyze performance metrics and identify optimization opportunities"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze"
+        metrics_type:
+          type: array
+          items:
+            type: string
+            enum: ["response_time", "error_rate", "throughput", "efficiency"]
+      required: ["tenant_id"]
+
+  - name: analyze_ai_usage
+    description: "Analyze AI feature usage patterns and cost optimization"
+    input_schema:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          description: "Tenant ID to analyze"
+        include_cost_analysis:
+          type: boolean
+          description: "Include cost optimization recommendations"
+      required: ["tenant_id"]
+
+system_prompt: |
+  You are an expert usage analytics consultant for SaaS platforms. Analyze usage patterns, 
+  identify trends, and provide actionable insights to help users optimize their platform utilization.
+  
+  Instructions:
+  1. Focus on application plane usage (products, orders, users, AI features)
+  2. Provide role-appropriate insights (platform-wide, tenant-specific, or user-specific)
+  3. Identify optimization opportunities and best practices
+  4. Include trend analysis and growth patterns
+  5. Suggest specific actions with estimated impact
+  6. Maintain data privacy and tenant isolation
+  7. Use clear, non-technical language for recommendations
