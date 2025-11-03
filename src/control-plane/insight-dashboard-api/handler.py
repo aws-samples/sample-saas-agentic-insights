@@ -31,8 +31,8 @@ def handler(event, context):
         body = json.loads(event['body']) if event.get('body') else {}
         analysis_type = body.get('analysis_type', 'default')
         
-        # Handle simple-cost-analysis type with Cost Analysis Agent
-        if analysis_type == 'simple-cost-analysis':
+        # Handle cost-analysis type with Cost Analysis Agent
+        if analysis_type == 'cost-analysis':
             bedrock_agent_runtime = boto3.client('bedrock-agent-runtime')
             
             # Get cost analysis agent IDs from environment variables

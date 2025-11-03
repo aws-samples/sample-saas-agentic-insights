@@ -41,7 +41,7 @@ class CostAnalysisController {
             const response = await fetch(`${window.APP_CONFIG.CONTROL_PLANE_API_URL}/insight-dashboard`, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({ analysis_type: 'simple-cost-analysis' })
+                body: JSON.stringify({ analysis_type: 'cost-analysis' })
             });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
