@@ -34,7 +34,7 @@ export class UsageAnalysisStack extends cdk.Stack {
       rootResourceId: props.appPlaneApiRootResourceId,
     });
 
-    // Import existing Lambda authorizer
+    /* // Import existing Lambda authorizer
     const existingAuthorizer = apigateway.Authorizer.fromAuthorizerId(this, 'ExistingAuth', props.lambdaAuthorizerId);
 
     // Usage Analysis Lambda Function
@@ -237,6 +237,6 @@ export class UsageAnalysisStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UsageAnalysisAgentAliasId', {
       value: props.agentAliasId,
       description: 'Bedrock Agent Alias ID',
-    });
+    }); */
   }
 }
