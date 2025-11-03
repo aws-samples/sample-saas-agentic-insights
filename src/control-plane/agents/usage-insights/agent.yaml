@@ -1,6 +1,6 @@
 name: usage-insights-agent
 version: 1.0.0
-foundation_model: anthropic.claude-3-haiku-20240307-v1:0
+foundation_model: anthropic.claude-haiku-4-5-20251001-v1:0
 description: "AI agent for advanced usage analytics including TTV, CLTV, engagement, and at-risk feature identification"
 
 tools:

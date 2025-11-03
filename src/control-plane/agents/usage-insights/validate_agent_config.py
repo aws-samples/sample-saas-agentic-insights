@@ -39,7 +39,7 @@ def validate_agent_yaml():
         print(f"✓ Found field: {field}")
     
     # Check foundation model
-    expected_model = "anthropic.claude-3-haiku-20240307-v1:0"
+    expected_model = "anthropic.claude-haiku-4-5-20251001-v1:0"
     if expected_model not in content:
         print(f"⚠️  WARNING: Expected foundation model '{expected_model}' not found")
     else:
