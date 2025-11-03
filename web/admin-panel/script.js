@@ -14,8 +14,6 @@ const AdminApp = {
 
     // Initialize the application
     init() {
-        console.log('Initializing Admin Panel...');
-        
         // Check if admin is already logged in
         const token = localStorage.getItem('adminToken');
         if (token && !this.isTokenExpired(token)) {
@@ -268,6 +266,7 @@ const AdminApp = {
     // Render tenants
     renderTenants() {
         const tenantList = document.getElementById('tenant-list');
+        if (!tenantList) return; // Guard against null element
         
         if (this.state.tenants.length === 0) {
             tenantList.innerHTML = `

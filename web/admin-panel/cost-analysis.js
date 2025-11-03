@@ -12,106 +12,21 @@ class CostAnalysisController {
     }
     
     async init() {
-        console.log('Initializing Cost Analysis Controller...');
-        this.renderLayout();
+        await this.renderLayout();
         await this.loadInsightData();
         this.setupEventListeners();
         this.initializeCharts();
     }
     
-    renderLayout() {
-        const content = `
-            <div class="cost-analysis-dashboard" id="cost-analysis-container">
-                <!-- Header -->
-                <div class="dashboard-header">
-                    <h1>Cost Analysis Dashboard</h1>
-                    <button id="refresh-btn" class="refresh-btn">Refresh Data</button>
-                </div>
-
-                <!-- Two Main Sections -->
-                <div class="main-sections">
-                    <!-- Trend Analysis Section -->
-                    <div class="section trend-section">
-                        <h2>📈 Trend Analysis</h2>
-                        <div class="chart-container">
-                            <canvas id="trend-chart"></canvas>
-                        </div>
-                        <div class="insights-list">
-                            <ul id="trends-list">
-                                <li>Loading trends...</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- AI Predictions Section -->
-                    <div class="section prediction-section">
-                        <h2>🔮 AI Predictions</h2>
-                        <div class="chart-container">
-                            <canvas id="prediction-chart"></canvas>
-                        </div>
-                        <div class="insights-list">
-                            <ul id="predictions-list">
-                                <li>Loading predictions...</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Advanced Analytics Grid -->
-                <div class="advanced-charts-grid">
-                    <!-- Row 1: Full Width Tier Comparison -->
-                    <div class="chart-row-full">
-                        <div class="section chart-widget-full">
-                            <h2>📊 Tier Profitability Comparison (12 Months)</h2>
-                            <div class="chart-container">
-                                <canvas id="tier-comparison-chart"></canvas>
-                            </div>
-                            <div class="chart-explanation">
-                                Shows profit margins for Basic ($29) and Premium ($99) tiers over time. Higher lines mean better profitability. Example: $15 margin means $15 profit per customer.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 2: Full Width Margin Variation -->
-                    <div class="chart-row-full">
-                        <div class="section chart-widget-full">
-                            <h2>📈 Month-over-Month Margin Variation</h2>
-                            <div class="chart-container">
-                                <canvas id="growth-heatmap-chart"></canvas>
-                            </div>
-                            <div class="chart-explanation">
-                                Shows monthly profit changes in dollars. Green bars mean profit increased, red bars mean profit decreased. Example: +$5 means $5 more profit than last month.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 3: Full Width Revenue Efficiency Index -->
-                    <div class="chart-row-full">
-                        <div class="section chart-widget-full">
-                            <h2>⚖️ Revenue Efficiency Index (12 Months)</h2>
-                            <div class="chart-container">
-                                <canvas id="efficiency-chart"></canvas>
-                            </div>
-                            <div class="chart-explanation">
-                                Shows how much it costs to generate a dollar of revenue tier-wise. Keep below 1.0 for profit. Example: 0.65 means 65¢ cost per $1 revenue, so 35¢ profit.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Recommendations Section -->
-                <div class="section optimizations-section">
-                    <h2>🤖 AI Recommendations</h2>
-                    <div class="insights-list">
-                        <ul id="optimizations-list">
-                            <li>Loading AI recommendations...</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('page-content').innerHTML = content;
+    async renderLayout() {
+        try {
+            const response = await fetch('cost-analysis.html');
+            const html = await response.text();
+            document.getElementById('page-content').innerHTML = html;
+        } catch (error) {
+            console.error('Error loading cost analysis template:', error);
+            document.getElementById('page-content').innerHTML = '<div class="error">Failed to load cost analysis template</div>';
+        }
     }
     
     async loadInsightData() {
@@ -132,9 +47,10 @@ class CostAnalysisController {
             if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             
             const result = await response.json();
+            console.log('API Response:', result);
             if (!result.analysis) throw new Error('No analysis data in response');
             
-            const analysisData = JSON.parse(result.analysis);
+            const analysisData = result.analysis;
             
             // Store the AI insights and data
             this.data.trends = analysisData.trends || [];
@@ -143,11 +59,13 @@ class CostAnalysisController {
             this.data.historicalData = analysisData.cost_per_tenant_averages || [];
             this.data.predictedData = analysisData.cost_per_tenant_predictions || [];
             
-            // Update UI
-            this.updateTrendsList();
-            this.updatePredictionsList();
-            this.updateRecommendationsList();
-            this.updateCharts();
+            // Wait a bit to ensure DOM is ready, then update UI
+            setTimeout(() => {
+                this.updateTrendsList();
+                this.updatePredictionsList();
+                this.updateRecommendationsList();
+                this.updateCharts();
+            }, 100);
             
         } catch (error) {
             console.error('Error loading insight data:', error);
@@ -169,6 +87,8 @@ class CostAnalysisController {
     
     updateTrendsList() {
         const trendsList = document.getElementById('trends-list');
+        if (!trendsList) return;
+        
         if (this.data.trends.length > 0) {
             trendsList.innerHTML = this.data.trends.map(trend => `<li>${trend}</li>`).join('');
         } else {
@@ -178,6 +98,8 @@ class CostAnalysisController {
     
     updatePredictionsList() {
         const predictionsList = document.getElementById('predictions-list');
+        if (!predictionsList) return;
+        
         if (this.data.predictions.length > 0) {
             predictionsList.innerHTML = this.data.predictions.map(prediction => `<li>${prediction}</li>`).join('');
         } else {
@@ -187,6 +109,8 @@ class CostAnalysisController {
     
     updateRecommendationsList() {
         const optimizationsList = document.getElementById('optimizations-list');
+        if (!optimizationsList) return;
+        
         if (this.data.recommendations.length > 0) {
             optimizationsList.innerHTML = this.data.recommendations.map(recommendation => `<li>${recommendation}</li>`).join('');
         } else {
@@ -321,25 +245,35 @@ class CostAnalysisController {
         
         const ctx = canvas.getContext('2d');
         
-        // Get last 6 months of historical data
+        // Get last 6 months of historical data and first 6 months of predicted data
         const historicalMonths = [...new Set(this.data.historicalData.map(d => d.month))].sort().slice(-6);
         const predictionMonths = [...new Set(this.data.predictedData.map(d => d.month))].sort().slice(0, 6);
         const allMonths = [...historicalMonths, ...predictionMonths];
         
-        // Prepare data for both tiers
-        const basicData = allMonths.map(month => {
-            const historical = this.data.historicalData.find(d => d.month === month && d.tier === 'basic');
-            if (historical) return historical.margin;
-            const predicted = this.data.predictedData.find(d => d.month === month && d.tier === 'basic');
-            return predicted ? predicted.predicted_margin : null;
-        });
+        // Create continuous data arrays for both tiers
+        const basicData = [];
+        const premiumData = [];
         
-        const premiumData = allMonths.map(month => {
-            const historical = this.data.historicalData.find(d => d.month === month && d.tier === 'premium');
-            if (historical) return historical.margin;
-            const predicted = this.data.predictedData.find(d => d.month === month && d.tier === 'premium');
-            return predicted ? predicted.predicted_margin : null;
-        });
+        // Fill historical data first
+        for (const month of historicalMonths) {
+            const basicHistorical = this.data.historicalData.find(d => d.month === month && d.tier === 'basic');
+            const premiumHistorical = this.data.historicalData.find(d => d.month === month && d.tier === 'premium');
+            
+            basicData.push(basicHistorical ? basicHistorical.margin : null);
+            premiumData.push(premiumHistorical ? premiumHistorical.margin : null);
+        }
+        
+        // Then fill predicted data
+        for (const month of predictionMonths) {
+            const basicPredicted = this.data.predictedData.find(d => d.month === month && d.tier === 'basic');
+            const premiumPredicted = this.data.predictedData.find(d => d.month === month && d.tier === 'premium');
+            
+            basicData.push(basicPredicted ? basicPredicted.predicted_margin : null);
+            premiumData.push(premiumPredicted ? premiumPredicted.predicted_margin : null);
+        }
+        
+        // Find the transition point (where historical ends and predicted begins)
+        const transitionIndex = historicalMonths.length - 1;
         
         this.charts.tierComparison = new Chart(ctx, {
             type: 'line',
@@ -347,52 +281,58 @@ class CostAnalysisController {
                 labels: allMonths,
                 datasets: [
                     {
-                        label: 'Basic Tier Margin (Historical)',
-                        data: basicData.slice(0, 6),
+                        label: 'Basic Tier Margin',
+                        data: basicData,
                         borderColor: '#3B82F6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 4,
                         fill: false,
                         tension: 0.4,
-                        pointBackgroundColor: '#3B82F6',
-                        pointRadius: 6
-                    },
-                    {
-                        label: 'Basic Tier Margin (Predicted)',
-                        data: [null, null, null, null, null, ...basicData.slice(6)],
-                        borderColor: '#3B82F6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 4,
-                        borderDash: [10, 5],
-                        fill: false,
-                        tension: 0.4,
-                        pointBackgroundColor: '#3B82F6',
+                        pointBackgroundColor: allMonths.map((_, index) => 
+                            index <= transitionIndex ? '#3B82F6' : '#3B82F6'
+                        ),
+                        pointBorderColor: allMonths.map((_, index) => 
+                            index <= transitionIndex ? '#3B82F6' : '#ffffff'
+                        ),
+                        pointBorderWidth: allMonths.map((_, index) => 
+                            index <= transitionIndex ? 0 : 2
+                        ),
                         pointRadius: 6,
-                        pointStyle: 'triangle'
+                        pointStyle: allMonths.map((_, index) => 
+                            index <= transitionIndex ? 'circle' : 'triangle'
+                        ),
+                        segment: {
+                            borderDash: (ctx) => {
+                                return ctx.p0DataIndex > transitionIndex ? [10, 5] : [];
+                            }
+                        }
                     },
                     {
-                        label: 'Premium Tier Margin (Historical)',
-                        data: premiumData.slice(0, 6),
+                        label: 'Premium Tier Margin',
+                        data: premiumData,
                         borderColor: '#8B5CF6',
                         backgroundColor: 'rgba(139, 92, 246, 0.1)',
                         borderWidth: 4,
                         fill: false,
                         tension: 0.4,
-                        pointBackgroundColor: '#8B5CF6',
-                        pointRadius: 6
-                    },
-                    {
-                        label: 'Premium Tier Margin (Predicted)',
-                        data: [null, null, null, null, null, ...premiumData.slice(6)],
-                        borderColor: '#8B5CF6',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        borderWidth: 4,
-                        borderDash: [10, 5],
-                        fill: false,
-                        tension: 0.4,
-                        pointBackgroundColor: '#8B5CF6',
+                        pointBackgroundColor: allMonths.map((_, index) => 
+                            index <= transitionIndex ? '#8B5CF6' : '#8B5CF6'
+                        ),
+                        pointBorderColor: allMonths.map((_, index) => 
+                            index <= transitionIndex ? '#8B5CF6' : '#ffffff'
+                        ),
+                        pointBorderWidth: allMonths.map((_, index) => 
+                            index <= transitionIndex ? 0 : 2
+                        ),
                         pointRadius: 6,
-                        pointStyle: 'triangle'
+                        pointStyle: allMonths.map((_, index) => 
+                            index <= transitionIndex ? 'circle' : 'triangle'
+                        ),
+                        segment: {
+                            borderDash: (ctx) => {
+                                return ctx.p0DataIndex > transitionIndex ? [10, 5] : [];
+                            }
+                        }
                     }
                 ]
             },

@@ -84,6 +84,7 @@ export class MetricsFrameworkStack extends cdk.Stack {
       code: lambda.Code.fromAsset('src/layers/metrics-collector'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       description: 'Enhanced metrics collection library with real-time cost calculation',
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // Prevent deletion conflicts
     });
 
     // MetricsService Lambda function
@@ -156,11 +157,6 @@ export class MetricsFrameworkStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'MetricsTableName', {
       value: this.metricsTable.tableName,
       description: 'DynamoDB table for raw metrics',
-    });
-
-    new cdk.CfnOutput(this, 'MetricsCollectorLayerArn', {
-      value: this.metricsCollectorLayer.layerVersionArn,
-      description: 'Lambda Layer ARN for metrics collection',
     });
 
     new cdk.CfnOutput(this, 'CostAggregationTableName', {

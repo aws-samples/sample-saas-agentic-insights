@@ -101,7 +101,7 @@ model: us.anthropic.claude-3-haiku-20240307-v1:0
 ### Available Inference Profile
 ```
 inferenceProfileId: us.anthropic.claude-3-haiku-20240307-v1:0
-description: Routes requests to Anthropic Claude 3 Haiku in us-east-1, us-west-2 and us-east-2
+description: Routes requests to Anthropic Claude Haiku 4.5 in us-east-1, us-west-2 and us-east-2
 status: ACTIVE
 ```
 

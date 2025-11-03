@@ -70,7 +70,7 @@ class MetricsCollector:
     
     def track_bedrock_invocation(self, model_id: str, input_tokens: int, output_tokens: int,
                                 user_id: Optional[str] = None):
-        """Track Bedrock AI usage with Claude 3 Haiku cost calculation"""
+        """Track Bedrock AI usage with Claude Sonnet 4.5 cost calculation"""
         input_cost = input_tokens * self.pricing['claude_haiku_input_token']
         output_cost = output_tokens * self.pricing['claude_haiku_output_token']
         total_cost = input_cost + output_cost

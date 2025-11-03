@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import time
+import re
 from decimal import Decimal
 from botocore.exceptions import ClientError
 
@@ -52,13 +53,24 @@ def handler(event, context):
             
             2. PREDICTIVE ANALYSIS: Examine predicted cost and margin data over next 6 months. Forecast the 5 most important trends, patterns, tier-specific growth and deep insights.
             
- 
+            3. RECOMMENDATIONS: Refer to the TREND ANALYSIS, PREDICTIVE ANALYSIS and the cost per-tenant averages and cost per-tenant predictions DATASETS, and then identify most critical and important 5 actionable cost/infrastructure optimization action items for the SaaS provider to improve the revenue/margin. Do NOT just provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Dive deeper, be specific and use data-driven analysis to provide recommendations. I need to see dollar values, % values, numbers in these recommendations to convince the SaaS provider. 
 
+            In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and each item MUST NOT exceed more than 150 characters in size including space. 
+        
             Return ONLY a JSON object in this exact format:
             {
-                "trends": ["trend 1", "trend 2", "trend 3", "trend 4", "trend 5"],
-                "predictions": ["prediction 1", "prediction 2", "prediction 3", "prediction 4", "prediction 5"],
-                "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3", "recommendation 4", "recommendation 5"]
+                "trends": ["t1", "t2", "t3", "t4", "t5"],
+                "predictions": ["p1", "p2", "p3", "p4", "p5"],
+                "recommendations": ["rec1", "rec2", "rec3", "rec4", "rec5"], 
+                "cost_per_tenant_averages": [
+                    {"month": "YYYY-MM", "tier": "basic | premium", "cost": xx.x, "revenue": xx.x, "margin": xx.x},
+                    ...include all the cost_per_tenant_averages data you retrieved...
+                ],
+                "cost_per_tenant_predictions": [
+                    {"month": "YYYY-MM", "tier": "basic | premium", "predicted_cost": xx.x, "confidence_low": xx.x, "confidence_high": xx.x, "revenue": xx.x, "predicted_margin": xx.x},
+                    ...include all the cost_per_tenant_predictions data you retrieved...
+                ]
+
             }
             """
             
@@ -81,9 +93,22 @@ def handler(event, context):
                         if 'bytes' in chunk:
                             result_text += chunk['bytes'].decode('utf-8')
                 
+                # Extract JSON using regex to handle all markdown/special characters
+                json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+                if json_match:
+                    json_text = json_match.group(0)
+                else:
+                    json_text = result_text
+                
+                # Parse JSON response from agent
+                try:
+                    analysis_json = json.loads(json_text)
+                except json.JSONDecodeError:
+                    analysis_json = {"error": "Invalid JSON response", "raw_text": result_text}
+                
                 response_body = {
                     'success': True,
-                    'analysis': result_text,
+                    'analysis': analysis_json,
                     'analysis_type': analysis_type,
                     'timestamp': context.aws_request_id,
                     'agent': 'cost-analysis-agent'

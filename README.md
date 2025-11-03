@@ -115,9 +115,9 @@ To deploy the solution to a different AWS region (e.g., us-east-2, eu-west-1):
 
 3. **Verify Bedrock model availability**:
    ```bash
-   # Check if Claude 3 Haiku is available in target region
+   # Check if Claude Haiku 4.5 is available in target region
    aws bedrock list-foundation-models --region us-east-2 \
-     --query 'modelSummaries[?contains(modelId, `claude-3-haiku`)]'
+     --query 'modelSummaries[?contains(modelId, `claude-haiku`)]'
    ```
 
 4. **Deploy to new region**:
@@ -127,7 +127,7 @@ To deploy the solution to a different AWS region (e.g., us-east-2, eu-west-1):
 
 #### Region-Specific Considerations
 
-- **Bedrock Availability**: Ensure Claude 3 Haiku is available in your target region
+- **Bedrock Availability**: Ensure Claude Haiku 4.5 is available in your target region
 - **Model ID Format**: Some regions use different model ID formats (with/without region prefix)
 - **Service Availability**: All core AWS services (Lambda, DynamoDB, API Gateway, EventBridge, S3, CloudFront) are available in all major regions
 - **Frontend URLs**: The deployment script automatically updates frontend configurations with new region-specific API Gateway URLs
@@ -235,7 +235,7 @@ agentic-insights-saas/
 - **Amazon EventBridge**: Event-driven architecture
 - **Amazon API Gateway**: REST APIs
 - **Amazon S3 + CloudFront**: Web hosting
-- **Amazon Bedrock**: AI-powered content generation (Claude 3 Haiku)
+- **Amazon Bedrock**: AI-powered content generation (Claude Haiku 4.5 & Claude Sonnet 4.5)
 
 ### Frontend
 - **Vanilla JavaScript**: No frameworks, modern ES6+
@@ -301,7 +301,7 @@ Beyond the core specifications, this implementation includes several enhancement
 
 ### 🤖 **AI-Powered Features**
 - **Intelligent Content Generation**: One-click AI product description generation using Amazon Bedrock
-- **Cost-Effective AI**: Claude 3 Haiku model optimized for speed and cost efficiency
+- **Cost-Effective AI**: Claude Haiku 4.5 model optimized for speed and cost efficiency
 - **Usage Tracking**: Real-time token consumption and cost monitoring per tenant
 - **Seamless Integration**: Generate button embedded in product creation/editing forms
 - **Professional Quality**: Expert e-commerce copywriter persona for compelling descriptions

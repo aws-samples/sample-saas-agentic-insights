@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document outlines the requirements for a comprehensive Metering Framework with AI-Powered Cost Analysis feature for the multi-tenant Agentic Insights e-commerce SaaS platform. The feature implements tenant-specific infrastructure usage tracking, real-time cost calculation, and AI-powered cost analysis using Amazon Bedrock Agent with Claude 3 Haiku. The system captures detailed metrics from all application plane services, processes them through an event-driven pipeline, and provides actionable cost insights through an enhanced admin dashboard with modern visualizations.
+This document outlines the requirements for a comprehensive Metering Framework with AI-Powered Cost Analysis feature for the multi-tenant Agentic Insights e-commerce SaaS platform. The feature implements tenant-specific infrastructure usage tracking, real-time cost calculation, and AI-powered cost analysis using Amazon Bedrock Agent with Claude Haiku 4.5. The system captures detailed metrics from all application plane services, processes them through an event-driven pipeline, and provides actionable cost insights through an enhanced admin dashboard with modern visualizations.
 
 ## Requirements
 
@@ -28,7 +28,7 @@ This document outlines the requirements for a comprehensive Metering Framework w
 2. WHEN tracking API requests THEN the system SHALL capture endpoint, method, status code, response time, request/response sizes, and calculate API Gateway costs
 3. WHEN monitoring Lambda executions THEN the system SHALL record function name, memory allocation, execution duration, memory usage, cold start status, and compute costs
 4. WHEN tracking DynamoDB operations THEN the system SHALL capture table name, operation type, consumed RCU/WCU, item size, and capacity costs
-5. WHEN recording Bedrock usage THEN the system SHALL track model ID, input/output tokens, request type, and calculate Claude 3 Haiku pricing costs
+5. WHEN recording Bedrock usage THEN the system SHALL track model ID, input/output tokens, request type, and calculate Claude Haiku 4.5 pricing costs
 6. WHEN monitoring S3 operations THEN the system SHALL capture bucket name, operation type, object size, storage class, and storage costs
 
 ### Requirement 3: Event-Driven Metrics Pipeline
@@ -73,7 +73,7 @@ This document outlines the requirements for a comprehensive Metering Framework w
 
 #### Acceptance Criteria
 
-1. WHEN deploying AI capabilities THEN the system SHALL use Amazon Bedrock Agent with Claude 3 Haiku foundation model
+1. WHEN deploying AI capabilities THEN the system SHALL use Amazon Bedrock Agent with Claude Haiku 4.5 foundation model
 2. WHEN configuring the agent THEN the system SHALL implement 3 action groups: Infrastructure Usage Calculator, Cost Per Tenant Analyzer, and Cost Prediction Engine
 3. WHEN processing analysis requests THEN the system SHALL use natural language prompts optimized for Haiku's capabilities
 4. WHEN generating insights THEN the system SHALL provide structured responses with specific cost figures, percentages, and recommendations
@@ -123,7 +123,7 @@ This document outlines the requirements for a comprehensive Metering Framework w
 
 1. WHEN generating insights THEN the system SHALL process requests directly through the Bedrock Agent
 2. WHEN serving requests THEN the system SHALL return fresh AI-generated analysis for each request
-3. WHEN processing requests THEN the system SHALL optimize prompts for Claude 3 Haiku's fast response times
+3. WHEN processing requests THEN the system SHALL optimize prompts for Claude Haiku 4.5's fast response times
 4. WHEN processing fails THEN the system SHALL provide appropriate error messages and retry options
 5. WHEN optimizing performance THEN the system SHALL ensure efficient API response handling
 

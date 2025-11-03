@@ -4,7 +4,7 @@ AI agent for generating compelling e-commerce product descriptions using Amazon 
 
 ## Configuration
 
-- **Model**: Claude 3 Haiku (via inference profile)
+- **Model**: Claude Sonnet 4.5 (us.anthropic.claude-sonnet-4-5-20250929-v1:0)
 - **Purpose**: Generate 3-4 sentence product descriptions
 - **Input**: Product name and short description
 - **Output**: Professional, engaging product description
@@ -26,6 +26,4 @@ The agent is invoked via the Lambda function in the API Gateway endpoint:
 
 ## Costs
 
-Claude 3 Haiku pricing (as of deployment):
-- Input tokens: $0.00025 per 1K tokens
-- Output tokens: $0.00125 per 1K tokens
+Claude Sonnet 4.5 pricing (as of deployment):
