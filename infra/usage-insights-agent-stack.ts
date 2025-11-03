@@ -288,7 +288,7 @@ export class UsageInsightsAgentStack extends cdk.Stack {
       },
       timeout: cdk.Duration.seconds(60), // 60 seconds timeout for AI analysis
       memorySize: 1024, // 1024 MB for AI workload and caching
-      reservedConcurrentExecutions: 50, // Reserve capacity for consistent performance
+      reservedConcurrentExecutions: 10, // Reserve capacity for consistent performance
       insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0, // Enable Lambda Insights
       logGroup: logGroup,
     });
