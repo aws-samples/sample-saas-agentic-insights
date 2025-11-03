@@ -213,22 +213,21 @@ create_user() {
             --region "$REGION" >/dev/null 2>&1
         
         print_success "Updated attributes for $email"
-        return 0
+    else
+        # Create the user
+        aws cognito-idp admin-create-user \
+            --user-pool-id "$user_pool_id" \
+            --username "$email" \
+            --user-attributes \
+                Name=email,Value="$email" \
+                Name=email_verified,Value=true \
+                Name=custom:tenant_id,Value="$tenant_id" \
+                Name=custom:role,Value="$role" \
+                Name=custom:tier,Value="$tier" \
+            --temporary-password "$DEFAULT_PASSWORD" \
+            --message-action SUPPRESS \
+            --region "$REGION" >/dev/null 2>&1
     fi
-    
-    # Create the user
-    aws cognito-idp admin-create-user \
-        --user-pool-id "$user_pool_id" \
-        --username "$email" \
-        --user-attributes \
-            Name=email,Value="$email" \
-            Name=email_verified,Value=true \
-            Name=custom:tenant_id,Value="$tenant_id" \
-            Name=custom:role,Value="$role" \
-            Name=custom:tier,Value="$tier" \
-        --temporary-password "$DEFAULT_PASSWORD" \
-        --message-action SUPPRESS \
-        --region "$REGION" >/dev/null 2>&1
     
     if [ $? -eq 0 ]; then
         # Set permanent password
@@ -247,7 +246,6 @@ create_user() {
         echo "           Tier: $tier"
     else
         print_error "Failed to create user: $email"
-        return 1
     fi
 }
 
@@ -262,11 +260,10 @@ for user_info in "${TENANT_USERS[@]}"; do
     IFS=':' read -r tenant_id email tier role <<< "$user_info"
     
     if create_user "$tenant_id" "$email" "$tier" "$role"; then
-        ((success_count++))
+        success_count=$((success_count+1))
     else
-        ((fail_count++))
+        fail_count=$((fail_count+1))
     fi
-    echo ""
 done
 
 # Summary
@@ -504,8 +501,15 @@ for tenant in "${TENANTS[@]}"; do
     for ((day=0; day<$DAYS; day++)); do
         # Calculate timestamp for this day
         day_timestamp=$((current_date - (day * 86400)))
-        date_str=$(date -u -r $day_timestamp +"%Y-%m-%dT%H:%M:%SZ")
-        month=$(date -u -r $day_timestamp +"%Y-%m")
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            date_str=$(date -u -r $day_timestamp +"%Y-%m-%dT%H:%M:%SZ")
+            month=$(date -u -r $day_timestamp +"%Y-%m")
+        else
+            date_str=$(date -u -d @$day_timestamp +"%Y-%m-%dT%H:%M:%SZ")
+            month=$(date -u -d @$day_timestamp +"%Y-%m")
+        fi
+
         
         # Calculate TTL (90 days from now)
         ttl=$((current_date + 7776000))
@@ -514,7 +518,12 @@ for tenant in "${TENANTS[@]}"; do
         growth_factor=$(awk "BEGIN {printf \"%.2f\", 1 + (($DAYS - $day) / $DAYS) * 0.5}")
         
         # Add weekly pattern (weekdays have more usage)
-        day_of_week=$(date -u -r $day_timestamp +"%u")  # 1=Monday, 7=Sunday
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            day_of_week=$(date -u -r $day_timestamp +"%u")  # macOS uses -r for timestamp
+        else
+            day_of_week=$(date -u -d @$day_timestamp +"%u")  # Linux uses -d @timestamp
+        fi
+
         if [ "$day_of_week" -ge 6 ]; then
             weekly_factor="0.6"  # Weekend - 60% of weekday traffic
         else
@@ -594,7 +603,7 @@ for tenant in "${TENANTS[@]}"; do
                 \"ttl\": {\"N\": \"$ttl\"}
             }")
             
-            ((total_items++))
+            total_items=$((total_items+1))
             
             # Write batch if it reaches the limit
             if [ ${#batch_items[@]} -ge $BATCH_SIZE ]; then
@@ -773,7 +782,11 @@ for tenant in "${TENANTS[@]}"; do
     months_list=""
     for ((day=0; day<$DAYS; day++)); do
         day_timestamp=$((current_date - (day * 86400)))
-        month=$(date -u -r $day_timestamp +"%Y-%m")
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            month=$(date -u -r $day_timestamp +"%Y-%m")
+        else
+            month=$(date -u -d @$day_timestamp +"%Y-%m")
+        fi
         # Add month to list if not already present
         if [[ ! " $months_list " =~ " $month " ]]; then
             months_list="$months_list $month"
