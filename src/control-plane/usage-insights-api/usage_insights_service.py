@@ -541,9 +541,9 @@ class UsageInsightsService:
         if date_range:
             date_range = self._validate_and_sanitize_date_range(date_range)
         else:
-            # Default to last 90 days for insights analysis
+            # Default to last 120 days for insights analysis
             current_date = datetime.now()
-            start_date = (current_date - timedelta(days=90)).strftime('%Y-%m-%d')
+            start_date = (current_date - timedelta(days=120)).strftime('%Y-%m-%d')
             end_date = current_date.strftime('%Y-%m-%d')
             date_range = {'start_date': start_date, 'end_date': end_date}
         
@@ -995,7 +995,7 @@ class UsageInsightsService:
             return {
                 'action': 'calculate_time_to_value',
                 **base_input,
-                'instructions': 'Calculate Time to Value metrics for tenants including mean, median, and percentile distributions.'
+                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
             }
         
         elif analysis_type == 'cltv':
@@ -1004,7 +1004,7 @@ class UsageInsightsService:
                 'action': 'project_customer_lifetime_value',
                 **base_input,
                 'projection_months': projection_months,
-                'instructions': 'Project Customer Lifetime Value based on usage patterns and retention metrics.'
+                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
             }
         
         elif analysis_type == 'feature_adoption':
@@ -1013,7 +1013,7 @@ class UsageInsightsService:
                 'action': 'analyze_feature_adoption_rates',
                 **base_input,
                 'time_period_days': time_period_days,
-                'instructions': 'Analyze feature adoption rates and identify low-adoption features.'
+                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
             }
         
         elif analysis_type == 'engagement':
@@ -1021,16 +1021,16 @@ class UsageInsightsService:
                 'action': 'calculate_engagement_scores',
                 **base_input,
                 'user_id': request_data.get('user_id'),
-                'instructions': 'Calculate user engagement scores using weighted formula and categorize into tiers.'
+                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
             }
         
         elif analysis_type == 'at_risk':
-            analysis_period_days = request_data.get('filters', {}).get('analysis_period_days', 90)
+            analysis_period_days = request_data.get('filters', {}).get('analysis_period_days', 120)
             return {
                 'action': 'identify_at_risk_features',
                 **base_input,
                 'analysis_period_days': analysis_period_days,
-                'instructions': 'Identify features with declining usage or low adoption that require intervention.'
+                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
             }
         
         else:
@@ -1085,6 +1085,7 @@ class UsageInsightsService:
             
             # Parse agent response
             try:
+                logger.info(f"cleaned response: {cleaned_completion}")
                 parsed_response = json.loads(cleaned_completion)
                 logger.info("Successfully parsed agent response as JSON")
             except json.JSONDecodeError as e:

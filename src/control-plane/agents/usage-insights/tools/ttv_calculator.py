@@ -193,7 +193,11 @@ def get_all_tenants(tenants_table, date_range: Optional[Dict] = None) -> List[Di
         # Filter by date range if provided and is a dictionary
         if date_range and isinstance(date_range, dict):
             if date_range.get('start_date'):
-                start_date = datetime.fromisoformat(date_range['start_date'].replace('Z', '+00:00'))
+                # Parse date string and make it timezone-aware (UTC)
+                start_date_str = date_range['start_date']
+                if 'T' not in start_date_str:
+                    start_date_str += 'T00:00:00+00:00'
+                start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
                 tenants = [
                     t for t in tenants 
                     if t.get('created_at') and 
@@ -201,7 +205,11 @@ def get_all_tenants(tenants_table, date_range: Optional[Dict] = None) -> List[Di
                 ]
             
             if date_range.get('end_date'):
-                end_date = datetime.fromisoformat(date_range['end_date'].replace('Z', '+00:00'))
+                # Parse date string and make it timezone-aware (UTC)
+                end_date_str = date_range['end_date']
+                if 'T' not in end_date_str:
+                    end_date_str += 'T23:59:59+00:00'
+                end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
                 tenants = [
                     t for t in tenants 
                     if t.get('created_at') and 

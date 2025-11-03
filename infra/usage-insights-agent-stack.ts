@@ -44,8 +44,16 @@ export class UsageInsightsAgentStack extends cdk.Stack {
     // Add Bedrock model invocation permissions
     bedrockAgentRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ['bedrock:InvokeModel'],
-      resources: [`arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0`],
+      actions: [
+        'bedrock:InvokeModel',
+        'bedrock:GetInferenceProfile',
+        'bedrock:ListInferenceProfiles'
+      ],
+      resources: [
+        `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-*`,
+        `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0`,
+        `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/*`
+      ],
     }));
 
     // Read system prompt from file
@@ -168,57 +176,63 @@ export class UsageInsightsAgentStack extends cdk.Stack {
     // Create Lambda functions for each tool
     const toolLambdas = this.createToolLambdas(usageMetricsTableName, tenantsTableName);
 
-    // Create action groups for Bedrock Agent
-    const actionGroups = toolSchemas.map((tool, index) => ({
-      actionGroupName: tool.name,
-      description: tool.description,
-      actionGroupExecutor: {
-        lambda: toolLambdas[index].functionArn,
-      },
-      apiSchema: {
-        payload: JSON.stringify({
-          openapi: '3.0.0',
-          info: {
-            title: `${tool.name} API`,
-            version: '1.0.0',
-          },
-          paths: {
-            [`/${tool.name}`]: {
-              post: {
-                description: tool.description,
-                requestBody: {
-                  required: true,
-                  content: {
-                    'application/json': {
-                      schema: tool.inputSchema.json,
-                    },
-                  },
-                },
-                responses: {
-                  '200': {
-                    description: 'Successful response',
-                    content: {
-                      'application/json': {
-                        schema: {
-                          type: 'object',
-                        },
-                      },
-                    },
-                  },
-                },
-              },
+    // Create action groups for Bedrock Agent using function schema
+    // Note: Function schema doesn't support nested objects, so we flatten parameters
+    const actionGroups = toolSchemas.map((tool, index) => {
+      const parameters: Record<string, any> = {};
+
+      // Flatten parameters - convert nested objects to top-level parameters
+      Object.entries(tool.inputSchema.json.properties).forEach(([key, value]: [string, any]) => {
+        if (value.type === 'object' && value.properties) {
+          // Flatten nested object properties
+          Object.entries(value.properties).forEach(([nestedKey, nestedValue]: [string, any]) => {
+            parameters[nestedKey] = {
+              type: nestedValue.type,
+              description: nestedValue.description,
+              required: false,
+            };
+          });
+        } else if (value.type === 'integer') {
+          // Handle integer type
+          parameters[key] = {
+            type: 'number',
+            description: value.description,
+            required: tool.inputSchema.json.required?.includes(key) || false,
+          };
+        } else {
+          // Handle simple types (string, number, boolean)
+          parameters[key] = {
+            type: value.type,
+            description: value.description,
+            required: tool.inputSchema.json.required?.includes(key) || false,
+          };
+        }
+      });
+
+      return {
+        actionGroupName: tool.name,
+        description: tool.description,
+        actionGroupExecutor: {
+          lambda: toolLambdas[index].functionArn,
+        },
+        functionSchema: {
+          functions: [
+            {
+              name: tool.name,
+              description: tool.description,
+              parameters: parameters,
             },
-          },
-        }),
-      },
-    }));
+          ],
+        },
+      };
+    });
 
     // Create Bedrock Agent with optimized configuration
     // PERFORMANCE OPTIMIZATION: Reduced idleSessionTtlInSeconds and optimized system prompt
     this.bedrockAgent = new bedrock.CfnAgent(this, 'UsageInsightsAgent', {
       agentName: 'usage-insights-agent',
       agentResourceRoleArn: bedrockAgentRole.roleArn,
-      foundationModel: 'anthropic.claude-3-haiku-20240307-v1:0',
+      foundationModel: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',  // Use inference profile instead of direct model
       instruction: systemPrompt,
       description: 'AI agent for advanced usage analytics including TTV, CLTV, engagement, and at-risk feature identification',
       idleSessionTtlInSeconds: 600, // Reduced from 900 to 600 seconds (10 minutes) for performance
@@ -297,6 +311,7 @@ export class UsageInsightsAgentStack extends cdk.Stack {
     this.usageInsightsFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
+        'bedrock-agent-runtime:InvokeAgent',  // Required for invoking agent at runtime
         'bedrock:InvokeAgent',
         'bedrock:GetAgent',
       ],

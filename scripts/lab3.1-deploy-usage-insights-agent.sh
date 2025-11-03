@@ -293,7 +293,7 @@ deploy_bedrock_agent_legacy() {
     print_status "Creating Bedrock agent (this may take 2-3 minutes)..."
     
     local agent_name="usage-insights-agent"
-    local foundation_model="anthropic.claude-3-haiku-20240307-v1:0"
+    local foundation_model="anthropic.claude-haiku-4-5-20251001-v1:0"
     
     # Check if agent already exists
     BEDROCK_AGENT_ID=$(aws bedrock-agent list-agents \
@@ -615,7 +615,7 @@ display_results() {
     echo "🤖 Bedrock Agent (Created by CDK):"
     echo "Agent ID: ${BEDROCK_AGENT_ID:-'Check CDK outputs'}"
     echo "Alias ID: ${BEDROCK_AGENT_ALIAS_ID:-'Check CDK outputs'}"
-    echo "Model: Claude 3 Haiku (anthropic.claude-3-haiku-20240307-v1:0)"
+    echo "Model: Claude 4.5 Haiku (anthropic.claude-haiku-4-5-20251001-v1:0)"
     echo "Tool Lambdas: 5 functions (ttv, cltv, feature_adoption, engagement, at_risk)"
     echo ""
     

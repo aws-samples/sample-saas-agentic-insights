@@ -54,12 +54,21 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     logger.info(f"Received event: {json.dumps(event)}")
     
     try:
-        # Extract action group and API path
+        # Extract action group and function name
+        # For function schema, Bedrock sends "function" field instead of "apiPath"
         action_group = event.get('actionGroup', '')
-        api_path = event.get('apiPath', '')
+        function_name = event.get('function', '')
+        api_path = event.get('apiPath', '')  # May be empty for function schema
         
-        # Extract parameters from request body
+        # Determine if this is function schema (has 'function' field) or API schema (has 'apiPath')
+        is_function_schema = 'function' in event
+        
+        logger.info(f"Extracted - Action Group: '{action_group}', Function: '{function_name}', API Path: '{api_path}', Is Function Schema: {is_function_schema}")
+        
+        # Extract parameters from request body (supports both OpenAPI and function schema formats)
         parameters = {}
+        
+        # Try extracting from requestBody.content (OpenAPI format)
         request_body = event.get('requestBody', {})
         content = request_body.get('content', {})
         app_json = content.get('application/json', {})
@@ -71,16 +80,31 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if param_name and param_value is not None:
                 parameters[param_name] = param_value
         
+        # Also try extracting from top-level parameters array (function schema format)
+        if not parameters and 'parameters' in event:
+            for param in event.get('parameters', []):
+                param_name = param.get('name')
+                param_value = param.get('value')
+                if param_name and param_value is not None:
+                    parameters[param_name] = param_value
+        
         logger.info(f"Action group: {action_group}, API path: {api_path}")
-        logger.info(f"Parameters: {json.dumps(parameters)}")
+        logger.info(f"Extracted parameters: {json.dumps(parameters)}")
         
         # Route to appropriate tool function
         result = None
         
         if 'calculate_time_to_value' in action_group or 'calculate_time_to_value' in api_path:
+            # Reconstruct date_range from flattened parameters
+            date_range = None
+            if parameters.get('start_date') and parameters.get('end_date'):
+                date_range = {
+                    'start_date': parameters.get('start_date'),
+                    'end_date': parameters.get('end_date')
+                }
             result = calculate_time_to_value(
                 tenant_id=parameters.get('tenant_id'),
-                date_range=parameters.get('date_range')
+                date_range=date_range
             )
         
         elif 'project_customer_lifetime_value' in action_group or 'project_customer_lifetime_value' in api_path:
@@ -115,20 +139,39 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
         
         # Format response for Bedrock Agent
-        response = {
-            "messageVersion": "1.0",
-            "response": {
-                "actionGroup": action_group,
-                "apiPath": api_path,
-                "httpMethod": event.get('httpMethod', 'POST'),
-                "httpStatusCode": 200 if not result.get('error') else 400,
-                "responseBody": {
-                    "application/json": {
-                        "body": json.dumps(result)
+        # Different response format for function schema vs API schema
+        if is_function_schema:
+            # Function schema response format
+            response = {
+                "messageVersion": "1.0",
+                "response": {
+                    "actionGroup": action_group,
+                    "function": function_name,  # Return the function name, not apiPath
+                    "functionResponse": {
+                        "responseBody": {
+                            "TEXT": {
+                                "body": json.dumps(result)
+                            }
+                        }
                     }
                 }
             }
-        }
+        else:
+            # API schema response format
+            response = {
+                "messageVersion": "1.0",
+                "response": {
+                    "actionGroup": action_group,
+                    "apiPath": api_path if api_path else "",
+                    "httpMethod": event.get('httpMethod', 'POST'),
+                    "httpStatusCode": 200 if not result.get('error') else 400,
+                    "responseBody": {
+                        "application/json": {
+                            "body": json.dumps(result)
+                        }
+                    }
+                }
+            }
         
         logger.info(f"Returning response: {json.dumps(response)}")
         return response
