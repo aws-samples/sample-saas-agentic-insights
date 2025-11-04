@@ -5,6 +5,7 @@ import { ControlPlaneStack } from './control-plane-stack';
 import { AppPlaneStack } from './app-plane-stack';
 import { MetricsFrameworkStack } from './metrics-framework-stack';
 import { CostAnalysisAgentStack } from './cost-analysis-agent-stack';
+import { ChurnAgentStack } from './churn-agent-stack';
 
 const app = new cdk.App();
 
@@ -49,8 +50,17 @@ const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsC
   costPerTenantTable: metricsFrameworkStack.costPerTenantTable,
 });
 
+// Churn Agent Stack - handles churn prediction with React app and DSQL
+const churnAgentStack = new ChurnAgentStack(app, 'AgenticInsightsChurnAgent', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  },
+});
+
 // Add dependencies
 metricsFrameworkStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(controlPlaneStack);
 appPlaneStack.addDependency(metricsFrameworkStack);
 costAnalysisAgentStack.addDependency(metricsFrameworkStack);
+churnAgentStack.addDependency(controlPlaneStack);
