@@ -20,9 +20,7 @@ async def execute_sql(query: str) -> str:
         return f"ERROR: {str(e)}"
 
 
-@tool(
-    description="Executes the SQL query and writes the result to `filename`, potentially overwriting the file."
-)
+@tool(description="Executes the SQL query and writes the result to `filename`, potentially overwriting the file.")
 async def load_data(query: str, filename: str) -> str:
     """Execute SQL query, save as CSV to temp file, and upload to code interpreter."""
     try:
@@ -32,12 +30,12 @@ async def load_data(query: str, filename: str) -> str:
         # Check if result is an error
         if result.startswith("SQL Error:"):
             return result
-        
+
         # Create temp file and upload to code interpreter
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as temp_file:
             temp_file.write(result)
             temp_file_path = temp_file.name
-        
+
         try:
             # Upload to code interpreter
             code_ctx = get_code_context()
@@ -46,7 +44,7 @@ async def load_data(query: str, filename: str) -> str:
         finally:
             # Clean up temp file
             os.unlink(temp_file_path)
-            
+
     except Exception as e:
         return f"ERROR: {str(e)}"
 
@@ -67,7 +65,7 @@ async def execute_python(code: str = None, keepalive: bool = False) -> str:
     """Execute Python code and return the result."""
     if not code:
         return "ERROR: No code provided"
-    
+
     try:
         code_ctx = get_code_context()
         return code_ctx.execute_code(code)
@@ -80,15 +78,15 @@ async def publish_asset(path: str) -> str:
     """Download file from code interpreter and publish to S3 with SHA1 hash filename."""
     try:
         code_ctx = get_code_context()
-        
+
         # Read file from code interpreter
         response = code_ctx._client.invoke_code_interpreter(
             codeInterpreterIdentifier="aws.codeinterpreter.v1",
             sessionId=code_ctx._session_id,
             name="readFiles",
-            arguments={"paths": [path]}
+            arguments={"paths": [path]},
         )
-        
+
         # Extract file content from response
         file_content = None
         mime_type = None
@@ -101,44 +99,33 @@ async def publish_asset(path: str) -> str:
                             file_content = resource.get("blob")
                             mime_type = resource.get("mimeType")
                             break
-        
+
         if not file_content:
             return f"ERROR: Could not read file {path}"
-        
+
         # Generate SHA1 hash
         sha1_hash = hashlib.sha1(file_content).hexdigest()
-        
+
         # Get file extension
         _, ext = os.path.splitext(path)
         hashed_filename = f"{sha1_hash}{ext}"
-        
+
         # Upload to S3
-        s3_client = boto3.client('s3')
-        bucket_name = os.getenv('S3_BUCKET', 'churn-agent-assets')
-        
-        upload_params = {
-            'Bucket': bucket_name,
-            'Key': hashed_filename,
-            'Body': file_content
-        }
-        
+        s3_client = boto3.client("s3")
+        bucket_name = os.getenv("S3_BUCKET", "churn-agent-assets")
+
+        upload_params = {"Bucket": bucket_name, "Key": hashed_filename, "Body": file_content}
+
         if mime_type:
-            upload_params['ContentType'] = mime_type
-        
+            upload_params["ContentType"] = mime_type
+
         s3_client.put_object(**upload_params)
-        
+
         s3_url = f"https://{bucket_name}.s3.amazonaws.com/{hashed_filename}"
         return f"Asset published: {s3_url}"
-        
+
     except Exception as e:
         return f"ERROR: {str(e)}"
-
-
-@tool
-async def emit_ui() -> None:
-    """Emit UI elements to the user interface."""
-    # This is a placeholder for the actual UI emission logic
-    return None
 
 
 system_prompt = f"""Today is {datetime.now().strftime('%Y-%m-%d')} (YYYY-MM-DD).
@@ -152,13 +139,8 @@ window. Instead, you can use SQL to "peak" at the data, and then use the `load_d
 the results to an interactive python environment. You can then use the execute_python tool to execute
 code to analyze the data. Never peak at more than 20 rows at a time.
 
-IMPORTANT: The user has NO access to the local file system. If you create any visualizations, charts, 
-or datasets that the user needs to see, you MUST use the `publish_asset` tool to upload them to S3 
-and provide the user with the published URL. Only create visualizations if the user explicitly asks 
-for them. When you publish an asset, include it in your response as:
-- For images (png, jpg, gif, svg): ![Description](URL)
-- For other files (csv, json, txt, etc): [Filename](URL)
-Do not attempt to display or describe the file contents.
+IMPORTANT: The user has NO access to the local file system. DO NOT CREATE IMAGES OR OTHER ASSETS AS THE USER
+CAN'T INTERACT WITH THEM.
 
 It is important that you - as the expert - give the user options and explain what they mean. For example,
 the user is asking about time-to-churn for a given tenant. You can model this with a variety of statistical
@@ -203,7 +185,7 @@ Then schema is this: CREATE TABLE IF NOT EXISTS churn_data (
 
 agent = Agent(
     system_prompt=system_prompt,
-    tools=[execute_sql, load_data, execute_python, publish_asset],
+    tools=[execute_sql, load_data, execute_python],
     model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
     callback_handler=None,
 )
