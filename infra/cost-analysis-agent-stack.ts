@@ -27,7 +27,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     // Parse agent config
     const agentConfigContent = fs.readFileSync(agentConfigPath, 'utf8');
     const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-cost-analysis-agent';
-    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'anthropic.claude-3-haiku-20240307-v1:0';
+    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
     const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'AI agent for cost analysis and financial insights';
     
     // Load agent instructions
@@ -66,8 +66,9 @@ export class CostAnalysisAgentStack extends cdk.Stack {
                 'bedrock:ListInferenceProfiles'
               ],
               resources: [
-                `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
-                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*`,
+                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`,
+                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/us.anthropic.claude-haiku-4-5-*`
               ]
             }),
             new iam.PolicyStatement({
@@ -80,14 +81,32 @@ export class CostAnalysisAgentStack extends cdk.Stack {
       }
     });
 
-    // Create Bedrock Agent - use inference profile for new agents
+    // Add AWS Marketplace permissions for third-party models
+    // Sid: MarketplaceOperationsFromBedrockFor3pModels
+    agentRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Unsubscribe'
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:CalledViaLast': 'bedrock.amazonaws.com'
+        }
+      }
+    }));
+
+    // Create Bedrock Agent with optimized prompt configuration
     this.costAnalysisAgent = new bedrock.CfnAgent(this, 'CostAnalysisAgent', {
       agentName: `${agentName}-${this.region}`,
       description: `${agentDescription} in ${this.region}`,
       agentResourceRoleArn: agentRole.roleArn,
-      foundationModel: 'us.anthropic.claude-3-haiku-20240307-v1:0', // Inference profile ID
+      foundationModel: agentModel,
       instruction: agentInstructions,
       idleSessionTtlInSeconds: 1800,
+      // Using Bedrock's default prompt configuration for better performance
       actionGroups: [
         {
           actionGroupName: 'cost-dataset-fetcher',

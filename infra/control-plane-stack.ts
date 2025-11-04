@@ -155,15 +155,19 @@ export class ControlPlaneStack extends cdk.Stack {
     tenantsTable.grantReadData(loginFunction);  // Login only needs read access
 
     // Grant Bedrock permissions to insight dashboard function
+    // Grant Bedrock Agent Runtime permissions to insight dashboard function
     insightDashboardApiFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         'bedrock-agent-runtime:InvokeAgent',
         'bedrock:InvokeAgent',
+        'bedrock:InvokeModel',
       ],
       resources: [
         `arn:aws:bedrock:${this.region}:${this.account}:agent/*`,
         `arn:aws:bedrock:${this.region}:${this.account}:agent-alias/*/*`,
+        `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*`,
+        `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/us.anthropic.claude-haiku-4-5-*`,
       ],
     }));
 

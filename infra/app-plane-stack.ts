@@ -575,7 +575,7 @@ export class AppPlaneStack extends cdk.Stack {
     // Parse agent config
     const agentConfigContent = fs.readFileSync(agentConfigPath, 'utf8');
     const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-product-desc-agent';
-    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'us.anthropic.claude-3-haiku-20240307-v1:0';
+    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
     const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'AI agent for generating e-commerce product descriptions';
     
     // Load agent instructions
@@ -597,7 +597,7 @@ export class AppPlaneStack extends cdk.Stack {
                 'bedrock:ListInferenceProfiles'
               ],
               resources: [
-                `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-*`,
                 `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`
               ]
             })
@@ -606,7 +606,24 @@ export class AppPlaneStack extends cdk.Stack {
       }
     });
 
-    // Create Bedrock Agent
+    // Add AWS Marketplace permissions for third-party models
+    // Sid: MarketplaceOperationsFromBedrockFor3pModels
+    bedrockAgentRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Unsubscribe'
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:CalledViaLast': 'bedrock.amazonaws.com'
+        }
+      }
+    }));
+
+    // Create Bedrock Agent with simplified configuration for Claude Sonnet 4.5
     this.bedrockAgent = new bedrock.CfnAgent(this, 'BedrockAgent', {
       agentName: `${agentName}-${this.region}`,
       description: `${agentDescription} in ${this.region}`,
@@ -616,32 +633,7 @@ export class AppPlaneStack extends cdk.Stack {
       idleSessionTtlInSeconds: 1800,
       actionGroups: [],
       knowledgeBases: [],
-      promptOverrideConfiguration: {
-        promptConfigurations: [
-          {
-            promptType: 'ORCHESTRATION',
-            promptCreationMode: 'OVERRIDDEN',
-            promptState: 'ENABLED',
-            basePromptTemplate: `{
-              "anthropic_version": "bedrock-2023-05-31",
-              "system": "$instruction$",
-              "messages": [
-                {
-                  "role": "user",
-                  "content": "$question$"
-                }
-              ]
-            }`,
-            inferenceConfiguration: {
-              temperature: 0.7,
-              topP: 0.9,
-              topK: 250,
-              maximumLength: 300,
-              stopSequences: []
-            }
-          }
-        ]
-      }
+      // Removed complex prompt overrides for Claude Sonnet 4.5 compatibility
     });
 
     // Create Agent Alias
@@ -685,7 +677,8 @@ export class AppPlaneStack extends cdk.Stack {
       resources: [
         this.bedrockAgent.attrAgentArn,
         `arn:aws:bedrock:${this.region}:${this.account}:agent-alias/${this.bedrockAgent.attrAgentId}/${this.bedrockAgentAlias.attrAgentAliasId}`,
-        `arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-*`,
+        `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-*`,
+        `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`,
       ],
     }));
 

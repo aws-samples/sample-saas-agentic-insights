@@ -134,7 +134,7 @@
 │  │                    Standalone AI Agent Stack                            │   │
 │  │                                                                         │   │
 │  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────┐  │   │
-│  │  │ Lambda Function │───▶│ Bedrock Agent   │───▶│ Claude 3 Haiku      │  │   │
+│  │  │ Lambda Function │───▶│ Bedrock Agent   │───▶│ Claude Haiku 4.5    │  │   │
 │  │  │ (Python 3.11)   │    │ (Inference      │    │ Foundation Model    │  │   │
 │  │  │                 │    │  Profile)       │    │                     │  │   │
 │  │  │ • Input validation│    │                 │    │ • Cost optimized    │  │   │

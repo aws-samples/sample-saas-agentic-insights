@@ -134,6 +134,7 @@ export class MetricsFrameworkStack extends cdk.Stack {
       code: lambda.Code.fromAsset('src/layers/metrics-collector'),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       description: 'Enhanced metrics collection library with real-time cost calculation',
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // Prevent deletion conflicts
     });
 
     // MetricsService Lambda function

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Metering Framework with AI-Powered Cost Analysis integrates comprehensive tenant-specific metrics collection, real-time cost calculation, and AI-driven insights into the existing multi-tenant Agentic Insights SaaS platform. The system uses an event-driven architecture with Amazon Bedrock Agent powered by Claude 3 Haiku to provide actionable cost intelligence through an enhanced admin dashboard with modern visualizations.
+The Metering Framework with AI-Powered Cost Analysis integrates comprehensive tenant-specific metrics collection, real-time cost calculation, and AI-driven insights into the existing multi-tenant Agentic Insights SaaS platform. The system uses an event-driven architecture with Amazon Bedrock Agent powered by Claude Haiku 4.5 to provide actionable cost intelligence through an enhanced admin dashboard with modern visualizations.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ graph TB
     subgraph "Amazon Bedrock AI"
         BEDROCK_AGENT[Cost Analysis Bedrock Agent]
         ACTION_GROUPS[3 Action Groups:<br/>• Infrastructure Usage<br/>• Cost Analysis<br/>• Cost Prediction]
-        CLAUDE_HAIKU[Claude 3 Haiku]
+        CLAUDE_HAIKU[Claude Haiku 4.5]
     end
     
     subgraph "Data Storage Layer"
@@ -79,7 +79,7 @@ The system follows a layered architecture with clear separation of concerns:
 
 1. **Metrics Collection Layer**: Enhanced Lambda Layer library for comprehensive usage tracking
 2. **Event Pipeline Layer**: EventBridge-based reliable metrics transmission
-3. **AI Analysis Layer**: Bedrock Agent with Claude 3 Haiku for cost intelligence
+3. **AI Analysis Layer**: Bedrock Agent with Claude Haiku 4.5 for cost intelligence
 4. **Data Storage Layer**: DynamoDB for metrics with proper indexing
 5. **Presentation Layer**: Enhanced admin dashboard with modern UI and visualizations
 
@@ -152,7 +152,7 @@ class MetricsCollector:
         self.eventbridge = boto3.client('events')
         self.event_bus_name = os.environ.get('METRICS_EVENT_BUS_NAME')
         
-        # AWS pricing constants (Claude 3 Haiku pricing)
+        # AWS pricing constants (Claude Haiku 4.5 pricing)
         self.pricing = {
             'api_gateway_requests': 3.50e-6,  # $3.50 per million requests
             'lambda_gb_second': 0.0000166667,  # $0.0000166667 per GB-second
@@ -236,7 +236,7 @@ class MetricsCollector:
     def track_bedrock_invocation(self, model_id: str, input_tokens: int,
                                 output_tokens: int, request_type: str = "general",
                                 user_id: Optional[str] = None):
-        """Track Bedrock AI usage with Claude 3 Haiku cost calculation"""
+        """Track Bedrock AI usage with Claude Haiku 4.5 cost calculation"""
         
         input_cost = input_tokens * self.pricing['claude_haiku_input_token']
         output_cost = output_tokens * self.pricing['claude_haiku_output_token']
@@ -1073,7 +1073,7 @@ def calculate_infrastructure_usage(tenant_ids, time_period, aggregate):
 def get_tenant_aggregated_usage(metrics_aggregation_table, tenant_id, start_time, end_time):
     """Get aggregated usage data for a single tenant"""
     
-    # AWS pricing constants (Claude 3 Haiku pricing)
+    # AWS pricing constants (Claude Haiku 4.5 pricing)
     pricing = {
         'api_gateway_requests': 3.50e-6,  # $3.50 per million requests
         'lambda_gb_second': 0.0000166667,  # $0.0000166667 per GB-second

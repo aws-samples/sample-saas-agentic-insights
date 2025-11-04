@@ -9,7 +9,7 @@ This document provides comprehensive implementation details for the **Intelligen
 ### Without Caching:
 - Dashboard loads → Calls Bedrock Agent → Waits 2-5 seconds → Shows results
 - **Every dashboard refresh** = New AI call = Slow + Expensive
-- Claude 3 Haiku costs money per token, so unnecessary calls waste budget
+- Claude Haiku 4.5 costs money per token, so unnecessary calls waste budget
 - Poor user experience with long loading times
 
 ### With Intelligent Caching:
@@ -402,7 +402,7 @@ class CostAnalysisService:
             # Calculate generation cost (approximate)
             generation_time = time.time() - start_time
             estimated_tokens = len(prompt) + len(str(parsed_data))
-            generation_cost = estimated_tokens * 0.25e-6  # Claude 3 Haiku pricing
+            generation_cost = estimated_tokens * 0.25e-6  # Claude Haiku 4.5 pricing
             
             # Add generation metadata
             parsed_data['_generation_info'] = {

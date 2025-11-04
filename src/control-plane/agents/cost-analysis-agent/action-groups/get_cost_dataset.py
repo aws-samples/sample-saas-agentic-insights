@@ -122,7 +122,7 @@ def handler(event, context):
 
 def generate_monte_carlo_predictions(historical_data, months=6, simulations=1000):
     """
-    Generate Monte Carlo cost predictions for next 6 months
+    Generate realistic hybrid Monte Carlo predictions with extreme volatility and state-based modeling
     """
     predictions = []
     
@@ -133,45 +133,104 @@ def generate_monte_carlo_predictions(historical_data, months=6, simulations=1000
     }
     
     for tier in ['basic', 'premium']:
-        # Extract historical costs for this tier
-        tier_costs = []
+        # Extract chronological costs for this tier
+        tier_records = []
         for record in historical_data:
             if record['tier'] == tier:
-                tier_costs.append(record['cost'])
+                tier_records.append((record['month'], float(record['cost'])))
         
-        if not tier_costs:
+        tier_records.sort(key=lambda x: x[0])  # Sort by month
+        tier_costs = [cost for _, cost in tier_records]
+        
+        if len(tier_costs) < 3:
             continue
-            
-        # Calculate statistics
-        mean_cost = sum(tier_costs) / len(tier_costs)
-        variance = sum((x - mean_cost) ** 2 for x in tier_costs) / len(tier_costs)
-        std_dev = math.sqrt(variance)
-        trend = calculate_trend(tier_costs)
+        
+        # Calculate actual historical range and patterns
+        min_cost = min(tier_costs)
+        max_cost = max(tier_costs)
+        cost_range = max_cost - min_cost
+        
+        # Detect cost states: Low, Medium, High
+        low_threshold = min_cost + cost_range * 0.33
+        high_threshold = min_cost + cost_range * 0.67
+        
+        # Classify recent months into states
+        recent_states = []
+        for cost in tier_costs[-3:]:
+            if cost <= low_threshold:
+                recent_states.append('low')
+            elif cost >= high_threshold:
+                recent_states.append('high')
+            else:
+                recent_states.append('medium')
+        
+        # State transition probabilities based on historical patterns
+        current_state = recent_states[-1] if recent_states else 'medium'
+        
+        # Extreme volatility multiplier based on actual range
+        volatility_factor = cost_range / 4  # Use quarter of historical range as base volatility
         
         # Generate predictions for next 6 months
         for month in range(1, months + 1):
+            future_month_str = get_future_month(month, historical_data)
+            future_month_num = int(future_month_str.split('-')[1])
+            
+            # Aggressive seasonal patterns based on historical extremes
+            seasonal_factors = {
+                1: 0.6, 2: 0.5, 3: 1.4, 4: 1.2, 5: 0.4, 6: 1.0,
+                7: 0.3, 8: 1.8, 9: 1.0, 10: 0.5, 11: 2.0, 12: 1.5
+            }
+            seasonal_factor = seasonal_factors.get(future_month_num, 1.0)
+            
             simulated_costs = []
             
-            # Run Monte Carlo simulation
+            # Run extreme volatility Monte Carlo simulation
             for _ in range(simulations):
-                # Add trend + random variation (normal distribution approximation)
-                random_factor = random.gauss(0, std_dev)
-                predicted_cost = mean_cost + (trend * month) + random_factor
-                # Ensure no negative costs
-                predicted_cost = max(5.0, predicted_cost)  # Minimum $5 cost
+                # State-based prediction with high transition probability
+                if random.random() < 0.4:  # 40% chance of extreme state change
+                    if current_state == 'high':
+                        # High cost month often followed by low cost
+                        base_cost = random.uniform(min_cost, low_threshold)
+                    elif current_state == 'low':
+                        # Low cost month can spike to high
+                        base_cost = random.uniform(high_threshold, max_cost)
+                    else:
+                        # Medium can go anywhere
+                        base_cost = random.uniform(min_cost, max_cost)
+                else:
+                    # Stay in similar range with some drift
+                    last_cost = tier_costs[-1]
+                    base_cost = last_cost + random.uniform(-cost_range*0.3, cost_range*0.3)
+                
+                # Apply aggressive seasonal adjustment
+                seasonal_cost = base_cost * seasonal_factor
+                
+                # Add extreme volatility (50% chance of major swing)
+                if random.random() < 0.5:
+                    # Major swing event
+                    swing_magnitude = volatility_factor * random.uniform(0.5, 2.0)
+                    swing_direction = 1 if random.random() < 0.5 else -1
+                    predicted_cost = seasonal_cost + (swing_magnitude * swing_direction)
+                else:
+                    # Normal variation
+                    normal_variation = volatility_factor * random.uniform(-0.5, 0.5)
+                    predicted_cost = seasonal_cost + normal_variation
+                
+                # Realistic bounds (allow extreme lows and highs)
+                predicted_cost = max(8.0, min(predicted_cost, max_cost * 1.5))
                 simulated_costs.append(predicted_cost)
             
-            # Calculate statistics from simulation
+            # Calculate statistics with wider confidence intervals
             avg_predicted_cost = sum(simulated_costs) / len(simulated_costs)
             simulated_costs.sort()
-            confidence_low = simulated_costs[int(0.1 * len(simulated_costs))]  # 10th percentile
-            confidence_high = simulated_costs[int(0.9 * len(simulated_costs))]  # 90th percentile
+            confidence_low = simulated_costs[int(0.05 * len(simulated_costs))]  # 5th percentile
+            confidence_high = simulated_costs[int(0.95 * len(simulated_costs))]  # 95th percentile
             
             revenue = tier_revenue[tier]
             predicted_margin = revenue - avg_predicted_cost
             
             predictions.append({
-                "month": get_future_month(month, historical_data),
+                "month": future_month_str,
                 "tier": tier,
                 "predicted_cost": round(avg_predicted_cost, 1),
                 "confidence_low": round(confidence_low, 1),
@@ -217,11 +276,14 @@ def get_future_month(months_ahead, historical_data):
     if latest_month is None:
         latest_month = datetime.now().strftime("%Y-%m")
     
-    # Parse latest month and add months_ahead
+    # Parse latest month and add months_ahead using proper month arithmetic
     year, month = map(int, latest_month.split('-'))
-    base_date = datetime(year, month, 1)
-    future_date = base_date + timedelta(days=30 * months_ahead)
-    return future_date.strftime("%Y-%m")
+    month += months_ahead
+    while month > 12:
+        month -= 12
+        year += 1
+    
+    return f"{year:04d}-{month:02d}"
 
 def decimal_serializer(obj):
     """JSON serializer for Decimal objects"""
