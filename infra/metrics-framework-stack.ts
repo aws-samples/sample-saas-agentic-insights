@@ -226,8 +226,6 @@ export class MetricsFrameworkStack extends cdk.Stack {
       description: 'DynamoDB table for raw metrics',
     });
 
-<<<<<<< HEAD
-=======
     new cdk.CfnOutput(this, 'MetricsCollectorLayerArn', {
       value: this.metricsCollectorLayer.layerVersionArn,
       description: 'Lambda Layer ARN for metrics collection',
@@ -243,7 +241,6 @@ export class MetricsFrameworkStack extends cdk.Stack {
       description: 'Lambda function ARN for usage metrics aggregation',
     });
 
->>>>>>> develop
     new cdk.CfnOutput(this, 'CostAggregationTableName', {
       value: this.costAggregationTable.tableName,
       description: 'DynamoDB table for aggregated cost metrics',
