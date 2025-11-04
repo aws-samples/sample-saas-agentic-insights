@@ -14,12 +14,15 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as logs_destinations from 'aws-cdk-lib/aws-logs-destinations';
 import { Construct } from 'constructs';
 
 interface AppPlaneStackProps extends cdk.StackProps {
   eventBus: events.EventBus;
   metricsCollectorLayer?: lambda.LayerVersion;
   metricsEventBusName?: string;
+  usageMetricsAggregator?: lambda.IFunction;
+  
 }
 
 export class AppPlaneStack extends cdk.Stack {
@@ -27,6 +30,7 @@ export class AppPlaneStack extends cdk.Stack {
   public readonly authorizer: apigateway.TokenAuthorizer;
   public bedrockAgent: bedrock.CfnAgent;
   public bedrockAgentAlias: bedrock.CfnAgentAlias;
+  public readonly apiAccessLogGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props: AppPlaneStackProps) {
     super(scope, id, props);
@@ -240,6 +244,13 @@ export class AppPlaneStack extends cdk.Stack {
       });
     }
 
+    // CloudWatch Log Group for API Gateway Access Logs
+        this.apiAccessLogGroup = new logs.LogGroup(this, 'ApiAccessLogGroup', {
+          logGroupName: '/aws/apigateway/app-plane-access-logs',
+          retention: logs.RetentionDays.ONE_WEEK,
+          removalPolicy: cdk.RemovalPolicy.DESTROY,
+        });
+    
     // API Gateway for Application Plane
     this.appPlaneApi = new apigateway.RestApi(this, 'AppPlaneApi', {
       restApiName: 'Agentic Insights App Plane API',
@@ -257,6 +268,30 @@ export class AppPlaneStack extends cdk.Stack {
           'tier-name'
         ],
       },
+      deployOptions: {
+          accessLogDestination: new apigateway.LogGroupLogDestination(this.apiAccessLogGroup),
+          accessLogFormat: apigateway.AccessLogFormat.custom(
+            '{"requestId":"$context.requestId",' +
+            '"requestTime":"$context.requestTime",' +
+            '"requestTimeEpoch":$context.requestTimeEpoch,' +
+            '"httpMethod":"$context.httpMethod",' +
+            '"path":"$context.path",' +
+            '"status":$context.status,' +
+            '"responseTime":$context.responseLatency,' +
+            '"ip":"$context.identity.sourceIp",' +
+            '"userAgent":"$context.identity.userAgent",' +
+            '"tenantId":"$context.authorizer.tenant_id",' +
+            '"userId":"$context.authorizer.user_id",' +
+            '"tier":"$context.authorizer.tier",' +
+            '"feature":"$context.resourcePath",' +
+            '"errorMessage":"$context.error.message",' +
+            '"integrationError":"$context.integrationErrorMessage",' +
+            '"aiMetadata":{"inputTokens":"$context.responseOverride.header.X-AI-Input-Tokens",' +
+            '"outputTokens":"$context.responseOverride.header.X-AI-Output-Tokens",' +
+            '"model":"$context.responseOverride.header.X-AI-Model",' +
+            '"success":"$context.responseOverride.header.X-AI-Success"}}'
+          ),
+        },
     });
 
     // Add Gateway Responses for CORS on error responses
@@ -495,6 +530,41 @@ export class AppPlaneStack extends cdk.Stack {
       value: premiumTierUserPool.userPoolId,
       description: 'Premium Tier User Pool ID',
     });
+
+    new cdk.CfnOutput(this, 'BasicTierUserPoolClientId', {
+      value: basicTierUserPoolClient.userPoolClientId,
+      description: 'Basic Tier User Pool Client ID',
+    });
+
+    new cdk.CfnOutput(this, 'PremiumTierUserPoolClientId', {
+      value: premiumTierUserPoolClient.userPoolClientId,
+      description: 'Premium Tier User Pool Client ID',
+    });
+
+    new cdk.CfnOutput(this, 'AppPlaneAuthorizerId', {
+      value: this.authorizer.authorizerId,
+      description: 'Application Plane API Authorizer ID',
+    });
+
+    new cdk.CfnOutput(this, 'ApiAccessLogGroupName', {
+      value: this.apiAccessLogGroup.logGroupName,
+      description: 'API Gateway Access Log Group Name',
+    });
+
+    // Connect API access logs to usage metrics aggregator if provided
+    if (props.usageMetricsAggregator) {
+      // Grant permission to read CloudWatch Logs
+      props.usageMetricsAggregator.grantInvoke(new iam.ServicePrincipal('logs.amazonaws.com'));
+      
+      // Create CloudWatch Logs subscription filter
+      // Note: CloudWatch Logs automatically batches log events before sending to Lambda
+      // Batching typically occurs within 5 minutes or when buffer size is reached
+      new logs.SubscriptionFilter(this, 'ApiAccessLogsSubscription', {
+        logGroup: this.apiAccessLogGroup,
+        destination: new logs_destinations.LambdaDestination(props.usageMetricsAggregator),
+        filterPattern: logs.FilterPattern.allEvents(),
+      });
+    }
   }
 
   private addAIDescriptionComponents() {

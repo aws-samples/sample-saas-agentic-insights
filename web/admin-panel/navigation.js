@@ -4,7 +4,9 @@ class NavigationController {
         this.currentPage = 'tenants';
         this.pages = {
             'tenants': () => this.loadTenantsPage(),
-            'cost-analysis': () => this.loadCostAnalysisPage()
+            'cost-analysis': () => this.loadCostAnalysisPage(),
+            'usage-insights': () => this.loadUsageInsightsPage()
+
         };
         
         this.init();
@@ -276,6 +278,37 @@ class NavigationController {
         }
     }
     
+    loadUsageInsightsPage() {
+        // Don't use updatePageContent with GSAP animation - it conflicts with dashboard rendering
+        const pageContent = document.getElementById('page-content');
+        if (pageContent) {
+            pageContent.innerHTML = '';
+            pageContent.style.opacity = '1';
+        }
+
+        // Initialize usage insights dashboard immediately
+        console.log('Attempting to initialize UsageInsightsDashboard...');
+
+        if (window.UsageInsightsDashboard && typeof window.UsageInsightsDashboard.init === 'function') {
+            console.log('Initializing UsageInsightsDashboard...');
+            window.UsageInsightsDashboard.init();
+        } else {
+            console.error('UsageInsightsDashboard not available or init method missing');
+            // Try again after a short delay
+            setTimeout(() => {
+                if (window.UsageInsightsDashboard && typeof window.UsageInsightsDashboard.init === 'function') {
+                    console.log('Retrying UsageInsightsDashboard initialization...');
+                    window.UsageInsightsDashboard.init();
+                } else {
+                    console.error('UsageInsightsDashboard still not available after retry');
+                    if (pageContent) {
+                        pageContent.innerHTML = '<div class="text-red-500 p-8">Error: Usage Insights Dashboard failed to load. Please refresh the page.</div>';
+                    }
+                }
+            }, 1000);
+        }
+    }
+
     updatePageContent(content) {
         const pageContent = document.getElementById('page-content');
         
@@ -295,3 +328,9 @@ class NavigationController {
         });
     }
 }
+
+// Initialize navigation when DOM is loaded (but don't load initial page)
+document.addEventListener('DOMContentLoaded', () => {
+    window.navigationController = new NavigationController();
+});
+

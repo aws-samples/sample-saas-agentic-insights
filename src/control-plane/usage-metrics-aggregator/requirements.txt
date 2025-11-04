@@ -1,0 +1,12 @@
+# AWS SDK for Python
+boto3>=1.28.0
+
+# No additional dependencies needed - using Python standard library
+# - json (built-in)
+# - gzip (built-in)
+# - base64 (built-in)
+# - datetime (built-in)
+# - decimal (built-in)
+# - statistics (built-in)
+# - collections (built-in)
+# - traceback (built-in)

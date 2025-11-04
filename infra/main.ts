@@ -5,6 +5,7 @@ import { ControlPlaneStack } from './control-plane-stack';
 import { AppPlaneStack } from './app-plane-stack';
 import { MetricsFrameworkStack } from './metrics-framework-stack';
 import { CostAnalysisAgentStack } from './cost-analysis-agent-stack';
+import { UsageInsightsAgentStack } from './usage-insights-agent-stack';
 
 const app = new cdk.App();
 
@@ -47,6 +48,15 @@ const costAnalysisAgentStack = new CostAnalysisAgentStack(app, 'AgenticInsightsC
   metricsTable: metricsFrameworkStack.metricsTable,
   costAggregationTable: metricsFrameworkStack.costAggregationTable,
   costPerTenantTable: metricsFrameworkStack.costPerTenantTable,
+});
+
+// Usage Insights Agent Stack - handles advanced usage insights with Strands agent
+// Note: This stack uses CDK parameters for dynamic values during deployment
+const usageInsightsAgentStack = new UsageInsightsAgentStack(app, 'AgenticInsightsUsageInsightsAgent', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION,
+  },
 });
 
 // Add dependencies
