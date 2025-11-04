@@ -144,7 +144,7 @@ export default function CostAnalysis() {
           datasets: [{
             label: 'Margin Change ($)',
             data: [2, -1, 3, 1, -2, 4, 2, 3, -1, 5, 2, 3],
-            backgroundColor: (ctx) => ctx.parsed.y >= 0 ? '#10B981' : '#EF4444'
+            backgroundColor: (ctx: any) => ctx.parsed.y >= 0 ? '#10B981' : '#EF4444'
           }]
         },
         options: {

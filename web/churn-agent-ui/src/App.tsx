@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import TenantManagement from './pages/TenantManagement';
-import CostAnalysis from './pages/CostAnalysis';
+// import TenantManagement from './pages/TenantManagement';
+// import CostAnalysis from './pages/CostAnalysis';
 import ChurnAnalysis from './pages/ChurnAnalysis';
 
 function App() {
@@ -34,8 +34,8 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<Navigate to="/tenants" replace />} />
-          <Route path="tenants" element={<TenantManagement />} />
-          <Route path="cost-analysis" element={<CostAnalysis />} />
+          {/* <Route path="tenants" element={<TenantManagement />} /> */}
+          {/* <Route path="cost-analysis" element={<CostAnalysis />} /> */}
           <Route path="churn-analysis" element={<ChurnAnalysis />} />
         </Route>
       </Routes>

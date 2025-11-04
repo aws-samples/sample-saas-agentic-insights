@@ -73,7 +73,7 @@ export default function ChurnAnalysis() {
                       <ToolInput input={part.input} />
                       {part.output !== undefined && (
                         <ToolOutput
-                          output={<Response>{part.output}</Response>}
+                          output={<Response>{JSON.stringify(part.output)}</Response>}
                           errorText={part.errorText}
                         />
                       )}
