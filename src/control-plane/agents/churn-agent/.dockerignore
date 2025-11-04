@@ -67,3 +67,7 @@ tests/
 
 # Keep wheelhouse for offline installations
 # wheelhouse/
+
+agent-repl.py
+launch.sh
+Transport.md
