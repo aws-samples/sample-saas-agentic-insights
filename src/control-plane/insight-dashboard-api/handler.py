@@ -46,34 +46,64 @@ def handler(event, context):
                     'body': json.dumps({'error': 'Cost analysis agent not configured'})
                 }
             
+            ##====== SECTION 1: TREND ANALYSIS ======
             prompt = """
-            Analyze the cost per-tenant dataset and provide:
+            Analyze the cost per-tenant dataset and provide the following. Note, Each analysis/recommendation item must be filled with numerical values, numbers, dollar values to justify, and each item MUST NOT exceed more than 150 characters in size including space. 
             
             1. TREND ANALYSIS: Examine cost and margin trends over the last 6 months for both Basic and Premium tiers. Identify the 5 most important cost per-tenant and margin trends, variations and deep insights.
             
-            2. PREDICTIVE ANALYSIS: Examine predicted cost and margin data over next 6 months. Forecast the 5 most important trends, patterns, tier-specific growth and deep insights.
-            
-            3. RECOMMENDATIONS: Refer to the TREND ANALYSIS, PREDICTIVE ANALYSIS and the cost per-tenant averages and cost per-tenant predictions DATASETS, and then identify most critical and important 5 actionable cost/infrastructure optimization action items for the SaaS provider to improve the revenue/margin. Do NOT just provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Dive deeper, be specific and use data-driven analysis to provide recommendations. I need to see dollar values, % values, numbers in these recommendations to convince the SaaS provider. 
-
-            In all above section, each item must be filled with numerical values, numbers, dollar values to justify, and each item MUST NOT exceed more than 150 characters in size including space. 
         
-            Return ONLY a JSON object in this exact format:
+            "Response JSON": Return ONLY a JSON object in this exact format:
             {
                 "trends": ["t1", "t2", "t3", "t4", "t5"],
-                "predictions": ["p1", "p2", "p3", "p4", "p5"],
-                "recommendations": ["rec1", "rec2", "rec3", "rec4", "rec5"], 
                 "cost_per_tenant_averages": [
-                    {"month": "YYYY-MM", "tier": "basic | premium", "cost": xx.x, "revenue": xx.x, "margin": xx.x},
-                    ...include all the cost_per_tenant_averages data you retrieved...
-                ],
-                "cost_per_tenant_predictions": [
-                    {"month": "YYYY-MM", "tier": "basic | premium", "predicted_cost": xx.x, "confidence_low": xx.x, "confidence_high": xx.x, "revenue": xx.x, "predicted_margin": xx.x},
-                    ...include all the cost_per_tenant_predictions data you retrieved...
-                ]
-
+                    {"month": "YYYY-MM", "tier": , "cost": xx.x, "revenue": xx.x, "margin": xx.x},
+                ] 
             }
             """
             
+            # ##====== SECTION 2: PREDICTIVE ANALYSIS ======
+            # prompt += """
+            # Also provide : 
+
+            # 2. PREDICTIVE ANALYSIS: Examine predicted cost and margin data over next 6 months. Forecast the 5 most important trends, patterns, tier-specific growth and deep insights.
+
+            # Add these items too to the "Response JSON":
+            # {
+            #     "predictions": ["p1", "p2", "p3", "p4", "p5"],
+            #     "cost_per_tenant_predictions": [
+            #         {"month": "YYYY-MM", "tier":, "predicted_cost": xx.x, "revenue": xx.x, "predicted_margin": xx.x},
+            #         ...
+            #     ]
+            # }
+            # """
+            # ##============= END of SECTION 2 ==============
+
+
+            # ##====== SECTION 3: ADVANCED INSIGHTS ==========
+            # prompt += """
+            # Add this flag to the"Response JSON":
+            # {
+            #     "enable_advanced_insights": true
+            # }
+            # """
+            # ##============= END of SECTION 2 ================
+
+
+            # ##====== SECTION 4: AI RECOMMENDATIONS ============
+            # prompt += """
+            # Also provide : 
+
+            # 3. RECOMMENDATIONS: Refer to the TREND ANALYSIS, PREDICTIVE ANALYSIS and the cost per-tenant averages and cost per-tenant predictions DATASETS, and then identify most critical and important 5 actionable cost/infrastructure optimization action items for the SaaS provider to improve the revenue/margin. Do NOT just provide generic output such as "Explore further cost reduction opportunities in the basic tier, potentially through automation or process improvements." or "Continue to focus on operational efficiency in the premium tier to drive down costs and improve margins." etc. Dive deeper, be specific and use data-driven analysis to provide recommendations. I need to see dollar values, % values, numbers in these recommendations to convince the SaaS provider. 
+
+            # Add these items too to the "Response JSON":
+            # {
+            #     "recommendations": ["rec1", "rec2", "rec3", "rec4", "rec5"]
+            # }
+            # """
+            # ##============= END of SECTION 4 ================
+
+
             try:
                 print(f"Invoking cost analysis agent: {cost_analysis_agent_id}")
                 

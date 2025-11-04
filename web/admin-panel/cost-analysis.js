@@ -58,6 +58,7 @@ class CostAnalysisController {
             this.data.recommendations = analysisData.recommendations || [];
             this.data.historicalData = analysisData.cost_per_tenant_averages || [];
             this.data.predictedData = analysisData.cost_per_tenant_predictions || [];
+            this.data.enableAdvancedInsights = analysisData.enable_advanced_insights || false;
             
             // Wait a bit to ensure DOM is ready, then update UI
             setTimeout(() => {
@@ -98,23 +99,29 @@ class CostAnalysisController {
     
     updatePredictionsList() {
         const predictionsList = document.getElementById('predictions-list');
-        if (!predictionsList) return;
+        const predictionSection = document.querySelector('.prediction-section');
         
-        if (this.data.predictions.length > 0) {
+        if (!predictionsList || !predictionSection) return;
+        
+        if (this.data.predictions && this.data.predictions.length > 0) {
             predictionsList.innerHTML = this.data.predictions.map(prediction => `<li>${prediction}</li>`).join('');
+            predictionSection.style.display = 'block';
         } else {
-            predictionsList.innerHTML = '<li>No prediction data available</li>';
+            predictionSection.style.display = 'none';
         }
     }
     
     updateRecommendationsList() {
         const optimizationsList = document.getElementById('optimizations-list');
-        if (!optimizationsList) return;
+        const optimizationsSection = document.querySelector('.optimizations-section');
         
-        if (this.data.recommendations.length > 0) {
+        if (!optimizationsList || !optimizationsSection) return;
+        
+        if (this.data.recommendations && this.data.recommendations.length > 0) {
             optimizationsList.innerHTML = this.data.recommendations.map(recommendation => `<li>${recommendation}</li>`).join('');
+            optimizationsSection.style.display = 'block';
         } else {
-            optimizationsList.innerHTML = '<li>No AI recommendations available</li>';
+            optimizationsSection.style.display = 'none';
         }
     }
     
@@ -126,9 +133,7 @@ class CostAnalysisController {
         
         this.createTrendChart();
         this.createPredictionChart();
-        this.createTierComparisonChart();
-        this.createGrowthHeatmapChart();
-        this.createEfficiencyChart();
+        this.updateAdvancedChartsVisibility();
     }
     
     createTrendChart() {
@@ -186,6 +191,11 @@ class CostAnalysisController {
     createPredictionChart() {
         const canvas = document.getElementById('prediction-chart');
         if (!canvas) return;
+        
+        // Only create chart if predicted data is available
+        if (!this.data.predictedData || this.data.predictedData.length === 0) {
+            return;
+        }
         
         if (this.charts.prediction) this.charts.prediction.destroy();
         
@@ -601,9 +611,26 @@ class CostAnalysisController {
     updateCharts() {
         this.createTrendChart();
         this.createPredictionChart();
-        this.createTierComparisonChart();
-        this.createGrowthHeatmapChart();
-        this.createEfficiencyChart();
+        this.updateAdvancedChartsVisibility();
+    }
+    
+    updateAdvancedChartsVisibility() {
+        const advancedChartsGrid = document.querySelector('.advanced-charts-grid');
+        if (!advancedChartsGrid) return;
+        
+        // Only show advanced charts if both historical and predicted data are available AND advanced insights are enabled
+        const hasHistoricalData = this.data.historicalData && this.data.historicalData.length > 0;
+        const hasPredictedData = this.data.predictedData && this.data.predictedData.length > 0;
+        const advancedInsightsEnabled = this.data.enableAdvancedInsights === true;
+        
+        if (hasHistoricalData && hasPredictedData && advancedInsightsEnabled) {
+            advancedChartsGrid.style.display = 'block';
+            this.createTierComparisonChart();
+            this.createGrowthHeatmapChart();
+            this.createEfficiencyChart();
+        } else {
+            advancedChartsGrid.style.display = 'none';
+        }
     }
     
     showError(message) {
