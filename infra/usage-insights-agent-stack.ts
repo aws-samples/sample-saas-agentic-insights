@@ -55,6 +55,23 @@ export class UsageInsightsAgentStack extends cdk.Stack {
       ],
     }));
 
+    // Add AWS Marketplace permissions for third-party models
+    // Sid: MarketplaceOperationsFromBedrockFor3pModels
+    bedrockAgentRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Unsubscribe'
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:CalledViaLast': 'bedrock.amazonaws.com'
+        }
+      }
+    }));
+
     // Read system prompt from file
     const systemPromptPath = path.join(__dirname, '../src/control-plane/agents/usage-insights/prompts/system_prompt.txt');
     const systemPrompt = fs.readFileSync(systemPromptPath, 'utf-8');
