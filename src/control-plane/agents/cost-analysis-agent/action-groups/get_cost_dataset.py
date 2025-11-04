@@ -276,11 +276,14 @@ def get_future_month(months_ahead, historical_data):
     if latest_month is None:
         latest_month = datetime.now().strftime("%Y-%m")
     
-    # Parse latest month and add months_ahead
+    # Parse latest month and add months_ahead using proper month arithmetic
     year, month = map(int, latest_month.split('-'))
-    base_date = datetime(year, month, 1)
-    future_date = base_date + timedelta(days=30 * months_ahead)
-    return future_date.strftime("%Y-%m")
+    month += months_ahead
+    while month > 12:
+        month -= 12
+        year += 1
+    
+    return f"{year:04d}-{month:02d}"
 
 def decimal_serializer(obj):
     """JSON serializer for Decimal objects"""

@@ -292,7 +292,7 @@ class CostAnalysisController {
                             index <= transitionIndex ? '#3B82F6' : '#3B82F6'
                         ),
                         pointBorderColor: allMonths.map((_, index) => 
-                            index <= transitionIndex ? '#3B82F6' : '#ffffff'
+                            index <= transitionIndex ? '#3B82F6' : '#3B82F6'
                         ),
                         pointBorderWidth: allMonths.map((_, index) => 
                             index <= transitionIndex ? 0 : 2
@@ -319,7 +319,7 @@ class CostAnalysisController {
                             index <= transitionIndex ? '#8B5CF6' : '#8B5CF6'
                         ),
                         pointBorderColor: allMonths.map((_, index) => 
-                            index <= transitionIndex ? '#8B5CF6' : '#ffffff'
+                            index <= transitionIndex ? '#8B5CF6' : '#8B5CF6'
                         ),
                         pointBorderWidth: allMonths.map((_, index) => 
                             index <= transitionIndex ? 0 : 2
