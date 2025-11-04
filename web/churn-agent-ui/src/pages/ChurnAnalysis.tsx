@@ -24,12 +24,14 @@ export default function ChurnAnalysis() {
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
-      api: `https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A592872546055%3Aruntime%2Fchurn_agent-aDAGxGHsZO/invocations?qualifier=DEFAULT`,
-      // api: `https://73ed15qlg7.execute-api.us-east-1.amazonaws.com/prod/churn-agent/`,
+      api: `https://bedrock-agentcore.${
+        import.meta.env.VITE_REGION
+      }.amazonaws.com/runtimes/${encodeURIComponent(
+        import.meta.env.VITE_CHURN_AGENT_ARN
+      )}/invocations?qualifier=DEFAULT`,
       headers: {
         Authorization: `Bearer ${localStorage.getItem("adminToken") || ""}`,
         "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": crypto.randomUUID(),
-        "x-vercel-ai-ui-message-stream": "v1",
       },
     }),
   });
@@ -73,7 +75,9 @@ export default function ChurnAnalysis() {
                       <ToolInput input={part.input} />
                       {part.output !== undefined && (
                         <ToolOutput
-                          output={<Response>{JSON.stringify(part.output)}</Response>}
+                          output={
+                            <Response>{JSON.stringify(part.output)}</Response>
+                          }
                           errorText={part.errorText}
                         />
                       )}

@@ -33,7 +33,7 @@ function App() {
             <Layout />
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="/tenants" replace />} />
+          <Route index element={<Navigate to="/churn-analysis" replace />} />
           {/* <Route path="tenants" element={<TenantManagement />} /> */}
           {/* <Route path="cost-analysis" element={<CostAnalysis />} /> */}
           <Route path="churn-analysis" element={<ChurnAnalysis />} />

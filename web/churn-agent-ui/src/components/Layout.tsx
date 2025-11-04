@@ -37,14 +37,14 @@ export default function Layout() {
   };
 
   const navItems = [
-    { path: '/tenants', label: 'Tenant Management', icon: Users },
-    { path: '/cost-analysis', label: 'Cost Analysis', icon: DollarSign, badge: 'AI' },
+    // { path: '/tenants', label: 'Tenant Management', icon: Users },
+    // { path: '/cost-analysis', label: 'Cost Analysis', icon: DollarSign, badge: 'AI' },
     { path: '/churn-analysis', label: 'Churn Analysis', icon: TrendingDown, badge: 'AI' }
   ];
 
   return (
     <SidebarProvider>
-      <div className="dark bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen flex w-full">
+      <div className="dark bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen flex w-full">
         <Sidebar>
           <SidebarHeader>
             <h2 className="text-xl font-bold text-white px-4 py-2">🔧 SaaS Admin</h2>

@@ -23,7 +23,7 @@ export default function Login() {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('adminToken', data.tokens.access_token);
-        navigate('/tenants');
+        navigate('/churn-analysis');
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Login failed');
