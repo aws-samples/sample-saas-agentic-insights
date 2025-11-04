@@ -17,6 +17,7 @@ import {
   PromptInputTextarea,
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
+import { CodeBlock } from "@/components/ai-elements/code-block";
 
 export default function ChurnAnalysis() {
   const [input, setInput] = useState("");
@@ -29,6 +30,7 @@ export default function ChurnAnalysis() {
       }.amazonaws.com/runtimes/${encodeURIComponent(
         import.meta.env.VITE_CHURN_AGENT_ARN
       )}/invocations?qualifier=DEFAULT`,
+      // api: "http://localhost:8080/invocations",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("adminToken") || ""}`,
         "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": crypto.randomUUID(),
@@ -64,33 +66,41 @@ export default function ChurnAnalysis() {
                 return <Response key={i}>{part.text}</Response>;
               case "reasoning":
                 return <Response key={i}>{part.text}</Response>;
-              case "dynamic-tool":
+              case "tool-execute_python":
                 return (
                   <Tool key={i} defaultOpen={true}>
-                    <ToolHeader
-                      type={`tool-${part.toolName}`}
-                      state={part.state || "complete"}
-                    />
+                    <ToolHeader type={part.type} state={part.state} />
                     <ToolContent>
-                      <ToolInput input={part.input} />
-                      {part.output !== undefined && (
-                        <ToolOutput
-                          output={
-                            <Response>{JSON.stringify(part.output)}</Response>
+                      {part.state == "input-available" || part.state == "output-available" ? (
+                        <CodeBlock
+                          language="python"
+                          code={
+                            part.input
+                              ? (part.input as { code: string })["code"].trim()
+                              : ""
                           }
-                          errorText={part.errorText}
                         />
+                      ) : (
+                        <ToolInput input={part.input} />
                       )}
+
+                      <ToolOutput
+                        output={
+                          <Response>{JSON.stringify(part.output)}</Response>
+                        }
+                        errorText={part.errorText}
+                      />
                     </ToolContent>
                   </Tool>
                 );
+
               default:
                 if (isToolPart(part)) {
                   return (
-                    <Tool key={i} defaultOpen={true}>
+                    <Tool key={i} defaultOpen={false}>
                       <ToolHeader type={part.type} state={part.state} />
                       <ToolContent>
-                        <ToolInput input={part.input || {}} />
+                        <ToolInput input={part.input} />
                         {!!part.output && (
                           <ToolOutput
                             output={
@@ -114,7 +124,7 @@ export default function ChurnAnalysis() {
   return (
     <div className="grid grid-rows-[auto_1fr_auto] h-[calc(100vh-4rem)] gap-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold bg-linear-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
           Churn Analysis
         </h1>
         <Badge

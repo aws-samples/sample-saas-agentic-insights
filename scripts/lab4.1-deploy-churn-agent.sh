@@ -84,7 +84,7 @@ print_status "Setting up virtual environment and installing AgentCore CLI..."
 cd src/control-plane/agents/churn-agent
 
 # Create and activate shared virtual environment
-VENV_PATH="$(dirname "$0")/../../../scripts/.venv"
+VENV_PATH="$(dirname "$0")/.venv"
 if [ ! -d "$VENV_PATH" ]; then
     python3 -m venv "$VENV_PATH"
 fi

@@ -58,71 +58,66 @@ async def stream_agent_response(agent, user_message: str) -> AsyncGenerator[dict
     """Stream agent response using data stream protocol."""
     transport = DataStreamTransport()
     text_started = False
-    active_tools = {}  # Track active tool calls by ID
+    active_tools = {}
 
     try:
         yield transport.start_stream()
 
         async for event in agent.stream_async(user_message):
-            # Handle message events
+            # Handle text data
+            if "data" in event:
+                if not text_started:
+                    yield transport.start_text_block()
+                    text_started = True
+                yield transport.stream_text_delta(event["data"])
+
+            # Handle streaming tool use
+            if "current_tool_use" in event:
+                current_tool = event["current_tool_use"]
+                tool_id = current_tool["toolUseId"]
+                tool_name = current_tool["name"]
+                
+                # End text block if active before starting tool
+                if text_started:
+                    yield transport.end_text_block()
+                    text_started = False
+
+                # Start new tool if not already tracked
+                if tool_id not in active_tools:
+                    active_tools[tool_id] = {"name": tool_name, "started": True}
+                    yield transport.start_tool_input(tool_name)
+
+                # Stream tool input delta
+                if "delta" in event and "toolUse" in event["delta"] and "input" in event["delta"]["toolUse"]:
+                    delta_input = event["delta"]["toolUse"]["input"]
+                    yield transport.stream_tool_input_delta(delta_input)
+
+                # Check if tool input is complete
+                tool_input = current_tool.get("input", "")
+                if tool_input and tool_input.endswith("}"):
+                    try:
+                        input_data = json.loads(tool_input)
+                        yield transport.tool_input_available(tool_name, input_data)
+                    except json.JSONDecodeError:
+                        pass
+
+            # Handle tool results
             if "message" in event:
                 message = event["message"]
                 content = message.get("content", [])
-
+                
                 for item in content:
-                    # Handle tool use
-                    # logger.info(f"Agent event: {event}")
-
-                    if "toolUse" in item:
-                        tool_use = item["toolUse"]
-                        tool_name = tool_use["name"]
-                        tool_id = tool_use["toolUseId"]
-                        tool_input = tool_use.get("input", {})
-
-                        logger.info(f"Tool use: {tool_name}, ID: {tool_id}, input: {tool_input}")
-
-                        # End text block if active before starting tool
-                        if text_started:
-                            yield transport.end_text_block()
-                            text_started = False
-
-                        # New tool call
-                        active_tools[tool_id] = {"name": tool_name, "input_dict": tool_input}
-                        yield {"type": "tool-input-start", "toolCallId": tool_id, "toolName": tool_name}
-
-                        # Send the complete input as delta
-                        input_text = json.dumps(tool_input)
-                        yield {"type": "tool-input-delta", "toolCallId": tool_id, "inputTextDelta": input_text}
-                        yield {
-                            "type": "tool-input-available",
-                            "toolCallId": tool_id,
-                            "toolName": tool_name,
-                            "input": tool_input,
-                        }
-
-                    # Handle tool result
-                    elif "toolResult" in item:
+                    if "toolResult" in item:
                         tool_result = item["toolResult"]
                         tool_id = tool_result["toolUseId"]
                         result_content = tool_result.get("content", [])
-
-                        logger.info(f"Tool result: ID: {tool_id}, content: {result_content}")
-
-                        # Extract text from result content
+                        
                         result_text = ""
                         for result_item in result_content:
                             if "text" in result_item:
                                 result_text += result_item["text"]
-
-                        yield {"type": "tool-output-available", "toolCallId": tool_id, "output": result_text}
-
-                    # Handle text content
-                    elif "text" in item:
-                        if not text_started:
-                            yield transport.start_text_block()
-                            text_started = True
-
-                        yield transport.stream_text_delta(item["text"])
+                        
+                        yield transport.tool_output_available(result_text)
 
         if text_started:
             yield transport.end_text_block()
