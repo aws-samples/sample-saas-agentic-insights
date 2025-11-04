@@ -20,8 +20,8 @@ class MetricsCollector:
             'lambda_request': Pricing.LAMBDA_REQUEST,
             'dynamodb_wcu': Pricing.DYNAMODB_WCU,
             'dynamodb_rcu': Pricing.DYNAMODB_RCU,
-            'claude_haiku_input_token': Pricing.CLAUDE_HAIKU_INPUT_TOKEN,
-            'claude_haiku_output_token': Pricing.CLAUDE_HAIKU_OUTPUT_TOKEN,
+            'claude_sonnet_input_token': Pricing.CLAUDE_SONNET_INPUT_TOKEN,
+            'claude_sonnet_output_token': Pricing.CLAUDE_SONNET_OUTPUT_TOKEN,
         }
     
     def track_api_request(self, endpoint: str, method: str, status_code: int,
@@ -70,9 +70,9 @@ class MetricsCollector:
     
     def track_bedrock_invocation(self, model_id: str, input_tokens: int, output_tokens: int,
                                 user_id: Optional[str] = None):
-        """Track Bedrock AI usage with Claude 3 Haiku cost calculation"""
-        input_cost = input_tokens * self.pricing['claude_haiku_input_token']
-        output_cost = output_tokens * self.pricing['claude_haiku_output_token']
+        """Track Bedrock AI usage with Claude Sonnet 4.5 cost calculation"""
+        input_cost = input_tokens * self.pricing['claude_sonnet_input_token']
+        output_cost = output_tokens * self.pricing['claude_sonnet_output_token']
         total_cost = input_cost + output_cost
         
         self._publish_event(EventTypes.BEDROCK_INVOCATION, {

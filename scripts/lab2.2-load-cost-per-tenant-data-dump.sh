@@ -80,7 +80,7 @@ fi
 print_status "Found table: $COST_TABLE_NAME"
 
 # Check if data dump file exists
-DATA_FILE="scripts/lab2.2-cost-per-tenant-data-dump.json"
+DATA_FILE="scripts/utils/lab2.2-cost-per-tenant-data-dump.json"
 if [ ! -f "$DATA_FILE" ]; then
     print_error "Data dump file not found: $DATA_FILE"
     exit 1

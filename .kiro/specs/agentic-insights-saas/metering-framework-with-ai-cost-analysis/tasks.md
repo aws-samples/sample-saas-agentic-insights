@@ -2,7 +2,7 @@
 
 - [ ] 1. Set up Enhanced Metrics Collector Library (Lambda Layer)
   - Create src/layers/metrics-collector/ directory structure with Python package
-  - Implement MetricsCollector class with AWS pricing constants for Claude 3 Haiku
+  - Implement MetricsCollector class with AWS pricing constants for Claude Haiku 4.5
   - Add methods for tracking API requests, Lambda executions, DynamoDB operations, Bedrock usage, and S3 operations
   - Include real-time cost calculation logic using current AWS pricing
   - Create requirements.txt with boto3 and other dependencies
@@ -34,7 +34,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5_
 
 - [ ] 5. Develop Amazon Bedrock Agent Infrastructure
-  - Create CDK stack for Bedrock Agent with Claude 3 Haiku foundation model
+  - Create CDK stack for Bedrock Agent with Claude Haiku 4.5 foundation model
   - Configure agent with system prompt optimized for SaaS cost analysis
   - Set up IAM roles with minimal required permissions for Bedrock and Lambda access
   - Deploy agent with production alias for stable endpoint
@@ -67,7 +67,7 @@
 
 - [ ] 9. Develop Cost Analysis API Service
   - Create Flask application for Cost Analysis API with Bedrock Agent integration
-  - Implement natural language prompt generation optimized for Claude 3 Haiku
+  - Implement natural language prompt generation optimized for Claude Haiku 4.5
   - Add streaming response handling and structured data parsing from agent responses
   - Include comprehensive error handling and graceful degradation
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_

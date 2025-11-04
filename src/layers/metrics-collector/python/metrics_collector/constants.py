@@ -40,14 +40,15 @@ class MetricNames:
     S3_REQUESTS = "s3_requests"
     S3_STORAGE_GB_HOURS = "s3_storage_gb_hours"
 
-# AWS Pricing Constants (Claude 3 Haiku)
+# AWS Pricing Constants
 class Pricing:
     API_GATEWAY_REQUESTS = 3.50e-6  # $3.50 per million requests
     LAMBDA_GB_SECOND = 0.0000166667  # $0.0000166667 per GB-second
     LAMBDA_REQUEST = 2.0e-7  # $0.20 per million requests
     DYNAMODB_WCU = 1.25e-6  # $1.25 per million WCUs
     DYNAMODB_RCU = 0.25e-6  # $0.25 per million RCUs
-    CLAUDE_HAIKU_INPUT_TOKEN = 0.25e-6  # $0.25 per million input tokens
-    CLAUDE_HAIKU_OUTPUT_TOKEN = 1.25e-6  # $1.25 per million output tokens
+    # Pricing for Claude Sonnet 4.5 (us.anthropic.claude-sonnet-4-5-20250929-v1:0)
+    CLAUDE_SONNET_INPUT_TOKEN = 3.0e-6  # $3.00 per million input tokens
+    CLAUDE_SONNET_OUTPUT_TOKEN = 15.0e-6  # $15.00 per million output tokens
     S3_REQUESTS = 0.4e-3  # $0.40 per 1000 requests
     S3_STORAGE_GB_MONTH = 0.023  # $0.023 per GB per month

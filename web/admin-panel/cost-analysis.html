@@ -1,0 +1,88 @@
+<div class="cost-analysis-dashboard" id="cost-analysis-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1>Cost Analysis Dashboard</h1>
+        <button id="refresh-btn" class="refresh-btn">Refresh Data</button>
+    </div>
+
+    <!-- Two Main Sections -->
+    <div class="main-sections">
+        <!-- Trend Analysis Section -->
+        <div class="section trend-section">
+            <h2>📈 Trend Analysis</h2>
+            <div class="chart-container">
+                <canvas id="trend-chart"></canvas>
+            </div>
+            <div class="insights-list">
+                <ul id="trends-list">
+                    <li>Loading trends...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- AI Predictions Section -->
+        <div class="section prediction-section">
+            <h2>🔮 AI Predictions</h2>
+            <div class="chart-container">
+                <canvas id="prediction-chart"></canvas>
+            </div>
+            <div class="insights-list">
+                <ul id="predictions-list">
+                    <li>Loading predictions...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Analytics Grid -->
+    <div class="advanced-charts-grid">
+        <!-- Row 1: Full Width Tier Comparison -->
+        <div class="chart-row-full">
+            <div class="section chart-widget-full">
+                <h2>📊 Tier Profitability Comparison (12 Months)</h2>
+                <div class="chart-container">
+                    <canvas id="tier-comparison-chart"></canvas>
+                </div>
+                <div class="chart-explanation">
+                    Shows profit margins for Basic ($29) and Premium ($99) tiers over time. Higher lines mean better profitability. Example: $15 margin means $15 profit per customer.
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Full Width Margin Variation -->
+        <div class="chart-row-full">
+            <div class="section chart-widget-full">
+                <h2>📈 Month-over-Month Margin Variation</h2>
+                <div class="chart-container">
+                    <canvas id="growth-heatmap-chart"></canvas>
+                </div>
+                <div class="chart-explanation">
+                    Shows monthly profit changes in dollars. Green bars mean profit increased, red bars mean profit decreased. Example: +$5 means $5 more profit than last month.
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Full Width Revenue Efficiency Index -->
+        <div class="chart-row-full">
+            <div class="section chart-widget-full">
+                <h2>⚖️ Revenue Efficiency Index (12 Months)</h2>
+                <div class="chart-container">
+                    <canvas id="efficiency-chart"></canvas>
+                </div>
+                <div class="chart-explanation">
+                    Shows how much it costs to generate a dollar of revenue tier-wise. Keep below 1.0 for profit. Example: 0.65 means 65¢ cost per $1 revenue, so 35¢ profit.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Recommendations Section -->
+    <div class="section optimizations-section">
+        <h2>🤖 AI Recommendations</h2>
+        <div class="insights-list">
+            <ul id="optimizations-list">
+                <li>Loading AI recommendations...</li>
+            </ul>
+        </div>
+    </div>
+</div>
