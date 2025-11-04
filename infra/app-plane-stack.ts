@@ -606,6 +606,23 @@ export class AppPlaneStack extends cdk.Stack {
       }
     });
 
+    // Add AWS Marketplace permissions for third-party models
+    // Sid: MarketplaceOperationsFromBedrockFor3pModels
+    bedrockAgentRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Unsubscribe'
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:CalledViaLast': 'bedrock.amazonaws.com'
+        }
+      }
+    }));
+
     // Create Bedrock Agent with simplified configuration for Claude Sonnet 4.5
     this.bedrockAgent = new bedrock.CfnAgent(this, 'BedrockAgent', {
       agentName: `${agentName}-${this.region}`,

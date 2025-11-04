@@ -81,6 +81,23 @@ export class CostAnalysisAgentStack extends cdk.Stack {
       }
     });
 
+    // Add AWS Marketplace permissions for third-party models
+    // Sid: MarketplaceOperationsFromBedrockFor3pModels
+    agentRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Unsubscribe'
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:CalledViaLast': 'bedrock.amazonaws.com'
+        }
+      }
+    }));
+
     // Create Bedrock Agent with optimized prompt configuration
     this.costAnalysisAgent = new bedrock.CfnAgent(this, 'CostAnalysisAgent', {
       agentName: `${agentName}-${this.region}`,
