@@ -49,3 +49,7 @@ coverage/
 web/admin-panel/config.js
 web/landing-page/config.js
 web/saas-app/config.js
+
+src/control-plane/agents/churn-agent/.bedrock_agentcore/*
+src/control-plane/agents/churn-agent/Transport.md
+src/control-plane/agents/churn-agent/.bedrock_agentcore.yaml
