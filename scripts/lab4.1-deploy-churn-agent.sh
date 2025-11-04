@@ -83,9 +83,12 @@ print_status "Stack outputs retrieved successfully"
 print_status "Setting up virtual environment and installing AgentCore CLI..."
 cd src/control-plane/agents/churn-agent
 
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
+# Create and activate shared virtual environment
+VENV_PATH="$(dirname "$0")/../../../scripts/.venv"
+if [ ! -d "$VENV_PATH" ]; then
+    python3 -m venv "$VENV_PATH"
+fi
+source "$VENV_PATH/bin/activate"
 
 # Install AgentCore CLI toolkit
 pip install --upgrade pip
@@ -173,15 +176,8 @@ echo "📊 Churn Agent Resources:"
 echo "  • AgentCore Runtime ARN: $AGENT_ARN"
 echo "  • DSQL Cluster: $DSQL_CLUSTER_ID"
 echo "  • Frontend URL: $CLOUDFRONT_URL"
-echo ""
-echo "🔧 Environment Configuration:"
-echo "  • Region: $REGION"
-echo "  • S3 Bucket: $S3_BUCKET"
-echo "  • Admin User Pool: $ADMIN_USER_POOL_ID"
-echo ""
 echo "✅ Next Steps:"
 echo "  1. Access the churn agent UI at: $CLOUDFRONT_URL"
 echo "  2. Use your admin credentials to authenticate"
 echo "  3. Start analyzing customer churn patterns"
-echo "  4. Test the agent with: agentcore invoke '{\"prompt\": \"analyze churn\"}'"
 echo ""
