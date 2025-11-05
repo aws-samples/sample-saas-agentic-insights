@@ -16,6 +16,14 @@ DSQL_CLUSTER_ID=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="DSQLClu
 
 echo "DSQL Cluster ID: $DSQL_CLUSTER_ID"
 
+# Use shared virtual environment
+SCRIPT_DIR="$(dirname "$0")"
+VENV_PATH="$SCRIPT_DIR/.venv"
+if [ ! -d "$VENV_PATH" ]; then
+    python3 -m venv "$VENV_PATH"
+fi
+source "$VENV_PATH/bin/activate"
+
 # Install required packages
 pip install numpy pandas boto3 psycopg2-binary python-dateutil tqdm
 
@@ -27,4 +35,6 @@ python3 "$SCRIPT_DIR/lab4-fill-data.py" \
     --seed 42 \
     --drop-existing
     
+deactivate
+
 echo "✅ Successfully filled DSQL cluster with churn data!"
