@@ -80,15 +80,8 @@ CONTROL_PLANE_API_URL=$(echo $CONTROL_OUTPUTS | jq -r '.[] | select(.OutputKey==
 print_status "Stack outputs retrieved successfully"
 
 # Create AgentCore Runtime using AgentCore CLI
-print_status "Setting up virtual environment and installing AgentCore CLI..."
+print_status "Setting up AgentCore CLI..."
 cd src/control-plane/agents/churn-agent
-
-# Create and activate shared virtual environment
-VENV_PATH="$(dirname "$0")/.venv"
-if [ ! -d "$VENV_PATH" ]; then
-    python3 -m venv "$VENV_PATH"
-fi
-source "$VENV_PATH/bin/activate"
 
 # Install AgentCore CLI toolkit
 pip install --upgrade pip
@@ -130,9 +123,6 @@ if [ -z "$AGENT_ARN" ]; then
 fi
 
 print_success "AgentCore Runtime deployed: $AGENT_ARN"
-
-# Deactivate virtual environment
-deactivate
 
 cd - > /dev/null
 
