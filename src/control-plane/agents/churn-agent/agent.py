@@ -166,20 +166,23 @@ CRITICAL CODE EXECUTION RULES:
 
 The database uses the Postgres conventions (but is Aurora DSQL and doesn't support all aggregation operations).
 Then schema is this: CREATE TABLE IF NOT EXISTS churn_data (
-    customer_id VARCHAR(50) PRIMARY KEY,
+    customer_id INTEGER PRIMARY KEY,
     signup_date DATE,
-    company_size VARCHAR(20),
-    contract_type VARCHAR(20),
-    tier VARCHAR(20),
+    company_size INTEGER,  -- 0=Startup, 1=Mid-Market, 2=Enterprise
+    contract_type INTEGER, -- 0=Monthly, 1=Annual
+    tier INTEGER,          -- 0=Free, 1=Standard, 2=Premium, 3=Enterprise
     churn BOOLEAN,
-    churn_reason VARCHAR(50),
     churn_date DATE,
-    churn_type VARCHAR(20),
+    voluntary_churn BOOLEAN, -- TRUE=voluntary churn, FALSE=involuntary churn, NULL=no churn
     open_tickets INTEGER,
     outage_count INTEGER,
     feature_count INTEGER,
     csm_touches INTEGER,
-    sla_misses INTEGER
+    sla_misses INTEGER,
+    mau INTEGER,
+    api_calls INTEGER,
+    mau_delta INTEGER,
+    api_calls_delta INTEGER
 )
 """
 
