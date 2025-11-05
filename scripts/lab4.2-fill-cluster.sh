@@ -20,11 +20,12 @@ echo "DSQL Cluster ID: $DSQL_CLUSTER_ID"
 SCRIPT_DIR="$(dirname "$0")"
 VENV_PATH="$SCRIPT_DIR/.venv"
 if [ ! -d "$VENV_PATH" ]; then
-    python3 -m venv "$VENV_PATH"
+    python3.11 -m venv "$VENV_PATH"
 fi
 source "$VENV_PATH/bin/activate"
 
 # Install required packages
+pip install --upgrade pip
 pip install numpy pandas boto3 psycopg2-binary python-dateutil tqdm
 
 # Generate and load data using merged script
