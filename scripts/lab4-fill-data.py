@@ -160,9 +160,25 @@ def assign_tier(company_size):
         return np.random.choice(["Free", "Standard"], p=[0.4, 0.6])
 
 
+def get_base_mau(company_size, tier):
+    """Get base monthly active users based on company size and tier"""
+    base_mau = {
+        "Startup": {"Free": 5, "Standard": 15},
+        "Mid-Market": {"Standard": 50, "Premium": 150},
+        "Enterprise": {"Premium": 300, "Enterprise": 800}
+    }
+    return base_mau.get(company_size, {}).get(tier, 10)
+
+
 def simulate_tenant_journey(tenant_row, snapshot_date, churn_threshold):
     tier = tenant_row["tier"]
-    tenant_state = {"open_tickets": 0, "outage_count": 0, "feature_count": 0, "csm_touches": 0, "sla_misses": 0}
+    company_size = tenant_row["company_size"]
+    base_mau = get_base_mau(company_size, tier)
+    
+    tenant_state = {
+        "open_tickets": 0, "outage_count": 0, "feature_count": 0, 
+        "csm_touches": 0, "sla_misses": 0, "mau": base_mau
+    }
 
     if tier == "Enterprise":
         satisfaction, decay = 95.0, 0.1
@@ -225,6 +241,50 @@ def simulate_tenant_journey(tenant_row, snapshot_date, churn_threshold):
         current_date += relativedelta(months=1)
         satisfaction = max(0, min(100, satisfaction))
 
+    # Calculate final MAU and API calls
+    if is_churning:
+        final_mau = 0
+        final_api_calls = 0
+        mau_delta = 0
+        api_calls_delta = 0
+    else:
+        # MAU varies ±20% from base
+        final_mau = max(0, int(tenant_state["mau"] * np.random.uniform(0.8, 1.2)))
+        # API calls: 100-500 per MAU per month
+        final_api_calls = final_mau * np.random.randint(100, 501)
+        
+        # Calculate month-over-month deltas based on satisfaction
+        satisfaction_factor = satisfaction / 100.0
+        
+        # MAU delta: higher satisfaction = more likely to grow
+        if satisfaction_factor > 0.8:
+            mau_growth_prob = 0.3
+        elif satisfaction_factor > 0.6:
+            mau_growth_prob = 0.15
+        else:
+            mau_growth_prob = 0.05
+            
+        if np.random.rand() < mau_growth_prob:
+            mau_delta = np.random.randint(1, max(2, int(final_mau * 0.1)))
+        elif np.random.rand() < 0.2:  # 20% chance of losing users
+            mau_delta = -np.random.randint(1, max(2, int(final_mau * 0.05)))
+        else:
+            mau_delta = 0
+            
+        # API calls delta correlates with MAU changes but has additional variance
+        if mau_delta > 0:
+            api_calls_delta = mau_delta * np.random.randint(80, 520)
+        elif mau_delta < 0:
+            api_calls_delta = mau_delta * np.random.randint(80, 520)
+        else:
+            # Independent API usage changes
+            api_calls_delta = np.random.randint(-int(final_api_calls * 0.1), int(final_api_calls * 0.1))
+
+    tenant_state["mau"] = final_mau
+    tenant_state["api_calls"] = final_api_calls
+    tenant_state["mau_delta"] = mau_delta
+    tenant_state["api_calls_delta"] = api_calls_delta
+
     return int(is_churning), churn_reason, churn_date, round(satisfaction), tenant_state
 
 
@@ -238,7 +298,7 @@ def generate_churn_data(args):
     tenants_list = []
     for i in tqdm(range(args.num_tenants), desc="Generating tenants"):
         tenant = {
-            "customerID": f"tenant_{i}",
+            "customerID": i,
             "signup_date": start_date + relativedelta(days=np.random.randint(0, (snapshot_date - start_date).days)),
             "contract_type": np.random.choice(["Monthly", "Annual"], p=[0.7, 0.3]),
             "company_size": np.random.choice(["Startup", "Mid-Market", "Enterprise"], p=[0.5, 0.4, 0.1]),
@@ -255,7 +315,7 @@ def generate_churn_data(args):
     )
     df[["churn", "churn_reason", "churn_date", "satisfaction", "tenant_state"]] = results
 
-    for field in ["open_tickets", "outage_count", "feature_count", "csm_touches", "sla_misses"]:
+    for field in ["open_tickets", "outage_count", "feature_count", "csm_touches", "sla_misses", "mau", "api_calls", "mau_delta", "api_calls_delta"]:
         df[field] = df["tenant_state"].apply(lambda x: x.get(field, 0))
     df = df.drop("tenant_state", axis=1)
 
@@ -303,20 +363,23 @@ def create_churn_table(args):
     
     create_table_sql = f"""
     CREATE TABLE IF NOT EXISTS {args.table_name} (
-        customer_id VARCHAR(50) PRIMARY KEY,
+        customer_id INTEGER PRIMARY KEY,
         signup_date DATE,
-        company_size VARCHAR(20),
-        contract_type VARCHAR(20),
-        tier VARCHAR(20),
+        company_size INTEGER,
+        contract_type INTEGER,
+        tier INTEGER,
         churn BOOLEAN,
-        churn_reason VARCHAR(50),
         churn_date DATE,
-        churn_type VARCHAR(20),
+        voluntary_churn BOOLEAN,
         open_tickets INTEGER,
         outage_count INTEGER,
         feature_count INTEGER,
         csm_touches INTEGER,
-        sla_misses INTEGER
+        sla_misses INTEGER,
+        mau INTEGER,
+        api_calls INTEGER,
+        mau_delta INTEGER,
+        api_calls_delta INTEGER
     )
     """
 
@@ -332,21 +395,29 @@ def insert_churn_data(df, args):
     
     data_tuples = []
     for _, row in df.iterrows():
+        # Convert string enums to integers
+        company_size_map = {"Startup": 0, "Mid-Market": 1, "Enterprise": 2}
+        contract_type_map = {"Monthly": 0, "Annual": 1}
+        tier_map = {"Free": 0, "Standard": 1, "Premium": 2, "Enterprise": 3}
+        
         tuple_data = (
             row['customerID'],
             datetime.strptime(row['signup_date'], '%Y-%m-%d').date() if pd.notna(row['signup_date']) else None,
-            row['company_size'],
-            row['contract_type'],
-            row['tier'],
+            company_size_map[row['company_size']],
+            contract_type_map[row['contract_type']],
+            tier_map[row['tier']],
             bool(row['churn']),
-            row['churn_reason'] if pd.notna(row['churn_reason']) else None,
             datetime.strptime(row['churn_date'], '%Y-%m-%d').date() if pd.notna(row['churn_date']) and row['churn_date'] != 'NaT' else None,
-            row['churn_type'] if pd.notna(row['churn_type']) else None,
+            row['churn_type'] == 'voluntary' if pd.notna(row['churn_type']) else None,
             int(row['open_tickets']),
             int(row['outage_count']),
             int(row['feature_count']),
             int(row['csm_touches']),
-            int(row['sla_misses'])
+            int(row['sla_misses']),
+            int(row['mau']),
+            int(row['api_calls']),
+            int(row['mau_delta']),
+            int(row['api_calls_delta'])
         )
         data_tuples.append(tuple_data)
     
@@ -358,14 +429,17 @@ def insert_churn_data(df, args):
         contract_type = EXCLUDED.contract_type,
         tier = EXCLUDED.tier,
         churn = EXCLUDED.churn,
-        churn_reason = EXCLUDED.churn_reason,
         churn_date = EXCLUDED.churn_date,
-        churn_type = EXCLUDED.churn_type,
+        voluntary_churn = EXCLUDED.voluntary_churn,
         open_tickets = EXCLUDED.open_tickets,
         outage_count = EXCLUDED.outage_count,
         feature_count = EXCLUDED.feature_count,
         csm_touches = EXCLUDED.csm_touches,
-        sla_misses = EXCLUDED.sla_misses
+        sla_misses = EXCLUDED.sla_misses,
+        mau = EXCLUDED.mau,
+        api_calls = EXCLUDED.api_calls,
+        mau_delta = EXCLUDED.mau_delta,
+        api_calls_delta = EXCLUDED.api_calls_delta
     """
     
     total_inserted = 0
