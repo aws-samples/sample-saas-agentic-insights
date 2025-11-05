@@ -93,6 +93,27 @@ print_status "Configuring churn agent for deployment..."
 DISCOVERY_URL="https://cognito-idp.$REGION.amazonaws.com/$ADMIN_USER_POOL_ID/.well-known/openid-configuration"
 CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id $ADMIN_USER_POOL_ID --query 'UserPoolClients[0].ClientId' --output text --region $REGION)
 
+# Pre-create S3 bucket for AgentCore deployment to avoid toolkit bug with ExpectedBucketOwner
+print_status "Preparing S3 bucket for AgentCore deployment..."
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+AGENTCORE_BUCKET="bedrock-agentcore-codebuild-sources-$ACCOUNT_ID-$REGION"
+
+# Check if bucket exists
+if aws s3api head-bucket --bucket "$AGENTCORE_BUCKET" 2>/dev/null; then
+    print_status "S3 bucket already exists: $AGENTCORE_BUCKET"
+else
+    print_status "Creating S3 bucket: $AGENTCORE_BUCKET"
+    if [ "$REGION" = "us-east-1" ]; then
+        # us-east-1 doesn't need LocationConstraint
+        aws s3api create-bucket --bucket "$AGENTCORE_BUCKET" --region "$REGION"
+    else
+        # Other regions need LocationConstraint
+        aws s3api create-bucket --bucket "$AGENTCORE_BUCKET" --region "$REGION" \
+            --create-bucket-configuration LocationConstraint="$REGION"
+    fi
+    print_success "S3 bucket created successfully: $AGENTCORE_BUCKET"
+fi
+
 agentcore configure \
     --entrypoint main.py \
     --region $REGION \
@@ -103,6 +124,8 @@ agentcore configure \
 
 # Deploy the agent
 print_status "Deploying churn agent to AgentCore Runtime..."
+# Temporarily disable exit on error to capture output even if command fails
+set +e
 LAUNCH_OUTPUT=$(agentcore launch \
     --agent "churn_agent" \
     --env "DSQL_CLUSTER_ID=$DSQL_CLUSTER_ID" \
@@ -112,7 +135,15 @@ LAUNCH_OUTPUT=$(agentcore launch \
     --env "DSQL_DATABASE=postgres" \
     --env "DSQL_USERNAME=admin" \
     2>&1)
+LAUNCH_EXIT_CODE=$?
+set -e
 echo "$LAUNCH_OUTPUT"
+
+# Check if launch failed
+if [ $LAUNCH_EXIT_CODE -ne 0 ]; then
+    print_error "AgentCore launch failed with exit code $LAUNCH_EXIT_CODE"
+    exit 1
+fi
 
 # Extract agent ARN from output
 AGENT_ARN=$(echo "$LAUNCH_OUTPUT" | grep -o 'arn:aws:bedrock-agentcore:[^[:space:]]*' | head -1)
