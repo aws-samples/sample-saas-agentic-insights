@@ -140,7 +140,7 @@ agentcore configure \
 print_status "Deploying churn agent to AgentCore Runtime..."
 # Temporarily disable exit on error to capture output even if command fails
 set +e
-LAUNCH_OUTPUT=$(python3 -m agentcore launch \
+LAUNCH_OUTPUT=$(agentcore launch \
     --agent "churn_agent" \
     --env "DSQL_CLUSTER_ID=$DSQL_CLUSTER_ID" \
     --env "DSQL_REGION=$REGION" \
