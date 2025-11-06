@@ -84,7 +84,6 @@ print_status "Setting up AgentCore CLI..."
 cd src/control-plane/agents/churn-agent
 
 # Install AgentCore CLI toolkit
-pip install --upgrade pip
 pip install bedrock-agentcore-starter-toolkit pyyaml
 
 print_status "Configuring churn agent for deployment..."
@@ -114,6 +113,21 @@ else
     print_success "S3 bucket created successfully: $AGENTCORE_BUCKET"
 fi
 
+# Verify installation and add to PATH
+print_status "Verifying agentcore installation..."
+export PATH="$HOME/.local/bin:$PATH"
+
+if ! command -v agentcore &> /dev/null; then
+    print_error "agentcore command not found after installation"
+    print_error "pip may have installed to a different location"
+    echo "Checking pip installation..."
+    pip show bedrock-agentcore-starter-toolkit || true
+    echo "PATH: $PATH"
+    exit 1
+fi
+
+print_success "agentcore CLI is ready"
+
 agentcore configure \
     --entrypoint main.py \
     --region $REGION \
@@ -126,7 +140,7 @@ agentcore configure \
 print_status "Deploying churn agent to AgentCore Runtime..."
 # Temporarily disable exit on error to capture output even if command fails
 set +e
-LAUNCH_OUTPUT=$(agentcore launch \
+LAUNCH_OUTPUT=$(python3 -m agentcore launch \
     --agent "churn_agent" \
     --env "DSQL_CLUSTER_ID=$DSQL_CLUSTER_ID" \
     --env "DSQL_REGION=$REGION" \
