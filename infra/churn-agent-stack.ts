@@ -262,6 +262,23 @@ export class ChurnAgentStack extends cdk.Stack {
       })
     );
 
+    // Add AWS Marketplace permissions for third-party models
+    // Sid: MarketplaceOperationsFromBedrockFor3pModels
+    bedrockAgentRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:Subscribe',
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Unsubscribe'
+      ],
+      resources: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:CalledViaLast': 'bedrock.amazonaws.com'
+        }
+      }
+    }));
+
     // Outputs
     new cdk.CfnOutput(this, "ReactAppBucketName", {
       value: reactAppBucket.bucketName,
