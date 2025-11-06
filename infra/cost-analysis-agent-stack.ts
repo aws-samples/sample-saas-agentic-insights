@@ -27,7 +27,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     // Parse agent config
     const agentConfigContent = fs.readFileSync(agentConfigPath, 'utf8');
     const agentName = agentConfigContent.match(/name:\s*(.+)/)?.[1]?.trim() || 'agentic-insights-cost-analysis-agent';
-    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+    const agentModel = agentConfigContent.match(/model:\s*(.+)/)?.[1]?.trim() || 'global.anthropic.claude-haiku-4-5-20251001-v1:0';
     const agentDescription = agentConfigContent.match(/description:\s*(.+)/)?.[1]?.trim() || 'AI agent for cost analysis and financial insights';
     
     // Load agent instructions
@@ -66,9 +66,8 @@ export class CostAnalysisAgentStack extends cdk.Stack {
                 'bedrock:ListInferenceProfiles'
               ],
               resources: [
-                `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*`,
-                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`,
-                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/us.anthropic.claude-haiku-4-5-*`
+                `arn:aws:bedrock:*::foundation-model/*`,
+                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/*`
               ]
             }),
             new iam.PolicyStatement({

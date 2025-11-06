@@ -248,7 +248,7 @@ export class UsageInsightsAgentStack extends cdk.Stack {
     this.bedrockAgent = new bedrock.CfnAgent(this, 'UsageInsightsAgent', {
       agentName: 'usage-insights-agent',
       agentResourceRoleArn: bedrockAgentRole.roleArn,
-      foundationModel: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',  // Use inference profile instead of direct model
+      foundationModel: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',  // Use inference profile instead of direct model
       instruction: systemPrompt,
       description: 'AI agent for advanced usage analytics including TTV, CLTV, engagement, and at-risk feature identification',
       idleSessionTtlInSeconds: 600, // Reduced from 900 to 600 seconds (10 minutes) for performance
