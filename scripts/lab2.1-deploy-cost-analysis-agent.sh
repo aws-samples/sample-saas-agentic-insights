@@ -64,3 +64,10 @@ aws lambda update-function-configuration \
 
 print_success "Cost Analysis Agent deployed and configured successfully!"
 print_status "You can now use with analysis_type='simple-cost-analysis'"
+
+# Test model access (may fail if access not yet granted)
+print_status "Testing model access for Claude Haiku 4.5..."
+aws bedrock-runtime invoke-model \
+    --model-id global.anthropic.claude-haiku-4-5-20251001-v1:0 \
+    --body '{"anthropic_version":"bedrock-2023-05-31","max_tokens":100,"messages":[{"role":"user","content":"Hello"}]}' \
+    /dev/null 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
