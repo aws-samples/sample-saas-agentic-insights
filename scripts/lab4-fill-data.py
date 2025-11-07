@@ -177,7 +177,7 @@ def simulate_tenant_journey(tenant_row, snapshot_date, churn_threshold):
     
     tenant_state = {
         "open_tickets": 0, "outage_count": 0, "feature_count": 0, 
-        "csm_touches": 0, "sla_misses": 0, "mau": base_mau
+        "csm_touches": 0, "sla_misses": 0
     }
 
     if tier == "Enterprise":
@@ -191,6 +191,12 @@ def simulate_tenant_journey(tenant_row, snapshot_date, churn_threshold):
 
     is_churning, churn_reason, churn_date = False, None, pd.NaT
     current_date = tenant_row["signup_date"]
+
+    # Initialize MAU tracking
+    current_mau = base_mau
+    prev_mau = base_mau
+    current_api_calls = current_mau * np.random.randint(100, 501)
+    prev_api_calls = current_api_calls
 
     global_events = sorted([e for e in EVENTS if e["trigger"] == "global"], key=lambda x: x["date"])
     prob_events = [e for e in EVENTS if e["trigger"] == "prob" and e["cat"] != "External"]
@@ -238,52 +244,47 @@ def simulate_tenant_journey(tenant_row, snapshot_date, churn_threshold):
         if is_churning:
             break
 
+        # Update MAU and API calls each month based on satisfaction
+        prev_mau = current_mau
+        prev_api_calls = current_api_calls
+        
+        satisfaction_factor = satisfaction / 100.0
+        
+        # MAU changes based on satisfaction
+        if satisfaction_factor > 0.8:
+            mau_change = np.random.uniform(-0.02, 0.08)  # Mostly growth
+        elif satisfaction_factor > 0.6:
+            mau_change = np.random.uniform(-0.05, 0.05)  # Stable
+        else:
+            mau_change = np.random.uniform(-0.1, 0.02)   # Mostly decline
+            
+        current_mau = max(1, int(current_mau * (1 + mau_change)))
+        
+        # API calls per MAU varies with satisfaction and usage patterns
+        api_per_mau = np.random.randint(100, 501)
+        if satisfaction_factor > 0.7:
+            api_per_mau = int(api_per_mau * np.random.uniform(1.0, 1.3))  # Higher usage when satisfied
+        elif satisfaction_factor < 0.4:
+            api_per_mau = int(api_per_mau * np.random.uniform(0.7, 1.0))  # Lower usage when dissatisfied
+            
+        current_api_calls = current_mau * api_per_mau
+
         current_date += relativedelta(months=1)
         satisfaction = max(0, min(100, satisfaction))
 
-    # Calculate final MAU and API calls
+    # Set final values
     if is_churning:
-        final_mau = 0
-        final_api_calls = 0
-        mau_delta = 0
-        api_calls_delta = 0
+        # For churned customers, use last known values before churn
+        tenant_state["mau"] = current_mau
+        tenant_state["api_calls"] = current_api_calls
+        tenant_state["mau_delta"] = current_mau - prev_mau
+        tenant_state["api_calls_delta"] = current_api_calls - prev_api_calls
     else:
-        # MAU varies ±20% from base
-        final_mau = max(0, int(tenant_state["mau"] * np.random.uniform(0.8, 1.2)))
-        # API calls: 100-500 per MAU per month
-        final_api_calls = final_mau * np.random.randint(100, 501)
-        
-        # Calculate month-over-month deltas based on satisfaction
-        satisfaction_factor = satisfaction / 100.0
-        
-        # MAU delta: higher satisfaction = more likely to grow
-        if satisfaction_factor > 0.8:
-            mau_growth_prob = 0.3
-        elif satisfaction_factor > 0.6:
-            mau_growth_prob = 0.15
-        else:
-            mau_growth_prob = 0.05
-            
-        if np.random.rand() < mau_growth_prob:
-            mau_delta = np.random.randint(1, max(2, int(final_mau * 0.1)))
-        elif np.random.rand() < 0.2:  # 20% chance of losing users
-            mau_delta = -np.random.randint(1, max(2, int(final_mau * 0.05)))
-        else:
-            mau_delta = 0
-            
-        # API calls delta correlates with MAU changes but has additional variance
-        if mau_delta > 0:
-            api_calls_delta = mau_delta * np.random.randint(80, 520)
-        elif mau_delta < 0:
-            api_calls_delta = mau_delta * np.random.randint(80, 520)
-        else:
-            # Independent API usage changes
-            api_calls_delta = np.random.randint(-int(final_api_calls * 0.1), int(final_api_calls * 0.1))
-
-    tenant_state["mau"] = final_mau
-    tenant_state["api_calls"] = final_api_calls
-    tenant_state["mau_delta"] = mau_delta
-    tenant_state["api_calls_delta"] = api_calls_delta
+        # For active customers, use current month values
+        tenant_state["mau"] = current_mau
+        tenant_state["api_calls"] = current_api_calls
+        tenant_state["mau_delta"] = current_mau - prev_mau
+        tenant_state["api_calls_delta"] = current_api_calls - prev_api_calls
 
     return int(is_churning), churn_reason, churn_date, round(satisfaction), tenant_state
 

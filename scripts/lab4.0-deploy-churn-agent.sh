@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Lab 4: Deploy Churn Agent with AgentCore Runtime
-# This script deploys the churn prediction agent using Bedrock AgentCore Runtime
-# Usage: ./lab4-deploy-churn-agent.sh
+# Lab 4.0: Deploy Churn Agent Infrastructure and Configure
+# This script deploys the CDK stack, configures AgentCore, and calls the launch script
+# Usage: ./lab4.0-deploy-churn-agent.sh
 
 set -e  # Exit on any error
 
-echo "🚀 Lab 4: Deploying Churn Agent..."
-echo "=================================="
+echo "🚀 Lab 4.0: Deploying Churn Agent Infrastructure..."
+echo "=================================================="
 
 # Colors for output
 RED='\033[0;31m'
@@ -23,10 +23,6 @@ print_status() {
 
 print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 print_error() {
@@ -55,10 +51,9 @@ fi
 
 print_status "Using AWS region: $REGION"
 
-# Deploy CDK stack first
+# Deploy CDK stack
 print_status "Deploying Churn Agent CDK stack..."
 cd "$(dirname "$0")/.."
-# npm run build
 npx cdk deploy AgenticInsightsChurnAgent --require-approval never
 
 # Get stack outputs
@@ -67,8 +62,6 @@ STACK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name AgenticInsightsC
 
 # Extract values from outputs
 BEDROCK_ROLE_ARN=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="BedrockAgentRoleArn") | .OutputValue')
-DSQL_CLUSTER_ID=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="DSQLClusterId") | .OutputValue')
-DSQL_ENDPOINT=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="DSQLEndpoint") | .OutputValue')
 S3_BUCKET=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="ReactAppBucketName") | .OutputValue')
 CLOUDFRONT_URL=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="CloudFrontDistributionUrl") | .OutputValue')
 
@@ -79,7 +72,7 @@ CONTROL_PLANE_API_URL=$(echo $CONTROL_OUTPUTS | jq -r '.[] | select(.OutputKey==
 
 print_status "Stack outputs retrieved successfully"
 
-# Create AgentCore Runtime using AgentCore CLI
+# Setup AgentCore CLI and configure
 print_status "Setting up AgentCore CLI..."
 cd src/control-plane/agents/churn-agent
 
@@ -92,21 +85,18 @@ print_status "Configuring churn agent for deployment..."
 DISCOVERY_URL="https://cognito-idp.$REGION.amazonaws.com/$ADMIN_USER_POOL_ID/.well-known/openid-configuration"
 CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id $ADMIN_USER_POOL_ID --query 'UserPoolClients[0].ClientId' --output text --region $REGION)
 
-# Pre-create S3 bucket for AgentCore deployment to avoid toolkit bug with ExpectedBucketOwner
+# Pre-create S3 bucket for AgentCore deployment
 print_status "Preparing S3 bucket for AgentCore deployment..."
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 AGENTCORE_BUCKET="bedrock-agentcore-codebuild-sources-$ACCOUNT_ID-$REGION"
 
-# Check if bucket exists
 if aws s3api head-bucket --bucket "$AGENTCORE_BUCKET" 2>/dev/null; then
     print_status "S3 bucket already exists: $AGENTCORE_BUCKET"
 else
     print_status "Creating S3 bucket: $AGENTCORE_BUCKET"
     if [ "$REGION" = "us-east-1" ]; then
-        # us-east-1 doesn't need LocationConstraint
         aws s3api create-bucket --bucket "$AGENTCORE_BUCKET" --region "$REGION"
     else
-        # Other regions need LocationConstraint
         aws s3api create-bucket --bucket "$AGENTCORE_BUCKET" --region "$REGION" \
             --create-bucket-configuration LocationConstraint="$REGION"
     fi
@@ -114,15 +104,10 @@ else
 fi
 
 # Verify installation and add to PATH
-print_status "Verifying agentcore installation..."
 export PATH="$HOME/.local/bin:$PATH"
 
 if ! command -v agentcore &> /dev/null; then
     print_error "agentcore command not found after installation"
-    print_error "pip may have installed to a different location"
-    echo "Checking pip installation..."
-    pip show bedrock-agentcore-starter-toolkit || true
-    echo "PATH: $PATH"
     exit 1
 fi
 
@@ -130,51 +115,26 @@ print_success "agentcore CLI is ready"
 
 agentcore configure \
     --entrypoint main.py \
+    --s3 $AGENTCORE_BUCKET \
     --region $REGION \
     --execution-role "$BEDROCK_ROLE_ARN" \
     --name "churn_agent" \
     --authorizer-config "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"$DISCOVERY_URL\",\"allowedClients\":[\"$CLIENT_ID\"]}}" \
     --non-interactive
 
-# Deploy the agent
-print_status "Deploying churn agent to AgentCore Runtime..."
-# Temporarily disable exit on error to capture output even if command fails
-set +e
-LAUNCH_OUTPUT=$(agentcore launch \
-    --agent "churn_agent" \
-    --env "DSQL_CLUSTER_ID=$DSQL_CLUSTER_ID" \
-    --env "DSQL_REGION=$REGION" \
-    --env "DSQL_HOST=$DSQL_ENDPOINT" \
-    --env "DSQL_PORT=5432" \
-    --env "DSQL_DATABASE=postgres" \
-    --env "DSQL_USERNAME=admin" \
-    2>&1)
-LAUNCH_EXIT_CODE=$?
-set -e
-echo "$LAUNCH_OUTPUT"
-
-# Check if launch failed
-if [ $LAUNCH_EXIT_CODE -ne 0 ]; then
-    print_error "AgentCore launch failed with exit code $LAUNCH_EXIT_CODE"
-    exit 1
-fi
-
-# Extract agent ARN from output
-AGENT_ARN=$(echo "$LAUNCH_OUTPUT" | grep -o 'arn:aws:bedrock-agentcore:[^[:space:]]*' | head -1)
-
-if [ -z "$AGENT_ARN" ]; then
-    print_error "Failed to extract agent ARN from launch output"
-    exit 1
-fi
-
-print_success "AgentCore Runtime deployed: $AGENT_ARN"
+print_success "AgentCore configured successfully"
 
 cd - > /dev/null
+
+# Call the launch script and extract ARN
+print_status "Launching churn agent..."
+SCRIPT_DIR="$(dirname "$0")"
+LAUNCH_OUTPUT=$("$SCRIPT_DIR/lab4.1-launch-churn-agent.sh")
+AGENT_ARN=$(echo "$LAUNCH_OUTPUT" | grep -o 'arn:aws:bedrock-agentcore:[^[:space:]]*' | head -1)
 
 # Update frontend environment files
 print_status "Updating frontend environment files..."
 
-# Update frontend .env file
 cat > web/churn-agent-ui/.env << EOF
 VITE_REGION=$REGION
 VITE_CHURN_AGENT_ARN=$AGENT_ARN
@@ -187,32 +147,26 @@ print_success "Environment files updated"
 print_status "Building and deploying React frontend..."
 cd web/churn-agent-ui
 
-# Install dependencies and build
 npm install
 npm run build
 
-# Deploy to S3
 print_status "Uploading build to S3 bucket: $S3_BUCKET"
 aws s3 sync dist/ s3://$S3_BUCKET --delete --region $REGION
-
-# Invalidate CloudFront cache - NOT NECESSARY BECAUSE WE DON'T CACHE THIS ANYWAY
-# DISTRIBUTION_ID=$(echo $CLOUDFRONT_URL | sed 's|https://||' | sed 's|\.cloudfront\.net||')
-# print_status "Invalidating CloudFront cache..."
-# aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*" --region $REGION
 
 print_success "Frontend deployed successfully"
 
 # Display deployment summary
 echo ""
-echo "🎉 Lab 4 Deployment Complete!"
-echo "============================="
+echo "🎉 Lab 4.0 Deployment Complete!"
+echo "================================"
 echo ""
 echo "📊 Churn Agent Resources:"
 echo "  • AgentCore Runtime ARN: $AGENT_ARN"
-echo "  • DSQL Cluster: $DSQL_CLUSTER_ID"
 echo "  • Frontend URL: $CLOUDFRONT_URL"
 echo "✅ Next Steps:"
 echo "  1. Access the churn agent UI at: $CLOUDFRONT_URL"
 echo "  2. Use your admin credentials to authenticate"
 echo "  3. Start analyzing customer churn patterns"
 echo ""
+
+print_success "Lab 4.0 deployment complete!"
