@@ -67,7 +67,7 @@ print_status "You can now use with analysis_type='simple-cost-analysis'"
 
 
 # Test model access (may fail if access not yet granted)
-print_status "Testing model access for US Claude Haiku 4.5..."
+print_status "[Model Access 1] Testing model access for US Claude Haiku 4.5..."
 aws bedrock-runtime invoke-model \
   --model-id us.anthropic.claude-haiku-4-5-20251001-v1:0 \
   --body "$(echo '{
@@ -84,7 +84,7 @@ aws bedrock-runtime invoke-model \
   output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
 
 # Test model access (may fail if access not yet granted)
-print_status "Testing model access for Global Claude Haiku 4.5..."
+print_status "[Model Access 2] Testing model access for Global Claude Haiku 4.5..."
 aws bedrock-runtime invoke-model \
   --model-id global.anthropic.claude-haiku-4-5-20251001-v1:0 \
   --body "$(echo '{
@@ -101,7 +101,7 @@ aws bedrock-runtime invoke-model \
   output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
 
 # Test model access (may fail if access not yet granted)
-print_status "Testing model access for US Claude Sonnet 4.5..."
+print_status "[Model Access 3] Testing model access for US Claude Sonnet 4.5..."
 aws bedrock-runtime invoke-model \
   --model-id us.anthropic.claude-sonnet-4-5-20250929-v1:0 \
   --body "$(echo '{
@@ -119,7 +119,7 @@ aws bedrock-runtime invoke-model \
 
 
 # Test model access (may fail if access not yet granted)
-print_status "Testing model access for Global Claude Sonnet 4.5..."
+print_status "[Model Access 4] Testing model access for Global Claude Sonnet 4.5..."
 aws bedrock-runtime invoke-model \
   --model-id global.anthropic.claude-sonnet-4-5-20250929-v1:0 \
   --body "$(echo '{

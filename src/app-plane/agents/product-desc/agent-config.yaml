@@ -1,7 +1,6 @@
 name: agentic-insights-product-desc-agent
 description: AI agent for generating e-commerce product descriptions for Agentic Insights SaaS platform
-model: us.anthropic.claude-sonnet-4-5-20250929-v1:0
-# model: us.anthropic.claude-sonnet-4-5-20250929-v1:0  # Inference profile ID for us-east-1
+model: global.anthropic.claude-haiku-4-5-20251001-v1:0
 idle_session_ttl: 1800
 alias_name: prod
 alias_description: Production alias for the agent

@@ -9,9 +9,24 @@
                 "bedrock:ListInferenceProfiles"
             ],
             "Resource": [
-                "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*",
-                "arn:aws:bedrock:${AWS_REGION}:${AWS_ACCOUNT_ID}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+                "arn:aws:bedrock:*::foundation-model/*",
+                "arn:aws:bedrock:${AWS_REGION}:${AWS_ACCOUNT_ID}:inference-profile/*"
             ]
+        },
+        {
+            "Sid": "MarketplaceOperationsFromBedrockFor3pModels",
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:Subscribe",
+                "aws-marketplace:ViewSubscriptions",
+                "aws-marketplace:Unsubscribe"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                "aws:CalledViaLast": "bedrock.amazonaws.com"
+                }
+            }
         }
     ]
 }
