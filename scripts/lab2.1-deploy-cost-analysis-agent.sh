@@ -65,10 +65,63 @@ aws lambda update-function-configuration \
 print_success "Cost Analysis Agent deployed and configured successfully!"
 print_status "You can now use with analysis_type='simple-cost-analysis'"
 
+
 # Test model access (may fail if access not yet granted)
-print_status "Testing model access for Claude Haiku 4.5..."
+print_status "Testing model access for US Claude Haiku 4.5..."
+aws bedrock-runtime invoke-model \
+  --model-id us.anthropic.claude-haiku-4-5-20251001-v1:0 \
+  --body "$(echo '{
+    "anthropic_version": "bedrock-2023-05-31",
+    "max_tokens": 1000,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Your message here"
+      }
+    ]
+  }' | base64)" \
+  --region us-east-1 \
+  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+
+# Test model access (may fail if access not yet granted)
+print_status "Testing model access for Global Claude Haiku 4.5..."
 aws bedrock-runtime invoke-model \
   --model-id global.anthropic.claude-haiku-4-5-20251001-v1:0 \
+  --body "$(echo '{
+    "anthropic_version": "bedrock-2023-05-31",
+    "max_tokens": 1000,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Your message here"
+      }
+    ]
+  }' | base64)" \
+  --region us-east-1 \
+  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+
+# Test model access (may fail if access not yet granted)
+print_status "Testing model access for US Claude Sonnet 4.5..."
+aws bedrock-runtime invoke-model \
+  --model-id us.anthropic.claude-sonnet-4-5-20250929-v1:0 \
+  --body "$(echo '{
+    "anthropic_version": "bedrock-2023-05-31",
+    "max_tokens": 1000,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Your message here"
+      }
+    ]
+  }' | base64)" \
+  --region us-east-1 \
+  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+
+
+# Test model access (may fail if access not yet granted)
+print_status "Testing model access for Global Claude Sonnet 4.5..."
+aws bedrock-runtime invoke-model \
+  --model-id global.anthropic.claude-sonnet-4-5-20250929-v1:0 \
   --body "$(echo '{
     "anthropic_version": "bedrock-2023-05-31",
     "max_tokens": 1000,
