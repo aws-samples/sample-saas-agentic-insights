@@ -24,18 +24,9 @@ from code_context import get_code_context
 
 # ======= STEP 3 =======
 # @tool(
-#     description="Execute python code. Alternatively, you can set the keepalive parameter to true, to keep the environment running and prevent automatic garbage collection.",
-#     inputSchema={
-#         "json": {
-#             "type": "object",
-#             "properties": {
-#                 "code": {"type": "string", "description": "Python code to execute"},
-#                 "keepalive": {"type": "boolean", "description": "Keep environment running"},
-#             },
-#         }
-#     },
+#     description="Execute python code. Alternatively, you can set the keepalive parameter to true, to keep the environment running and prevent automatic garbage collection."
 # )
-# async def execute_python(code: str = None, keepalive: bool = False) -> str:
+# async def execute_python(code: str = None) -> str:
 #     """Execute Python code and return the result."""
 #     if not code:
 #         return "ERROR: No code provided"
