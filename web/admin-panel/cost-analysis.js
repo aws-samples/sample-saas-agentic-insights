@@ -634,16 +634,7 @@ class CostAnalysisController {
     }
     
     showError(message) {
-        const container = document.getElementById('cost-analysis-container');
-        if (container) {
-            container.innerHTML = `
-                <div class="error-container" style="color: white;">
-                    <h3 style="color: #EF4444;">Error Loading Data</h3>
-                    <p style="color: white;">${message}</p>
-                    <button onclick="window.CostAnalysisController.loadInsightData()" style="background: #EF4444; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer;">Retry</button>
-                </div>
-            `;
-        }
+        alert(`An error happened, please press "Refresh Data" to reload the page.\n\nError: ${message}`);
     }
 }
 
