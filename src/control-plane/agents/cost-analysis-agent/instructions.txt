@@ -14,6 +14,8 @@ Structure your response with:
 - Forecasted predictions with confidence levels
 - Actionable recommendations for cost optimization
 
-Include both historical trend data and forecasted predictions in the "data" section for dashboard visualizations.
+IMPORTANT: The getCostPerTenantDataset action will return a cache_uid. You MUST include this exact cache_uid in your final JSON response. This allows the dashboard to fetch the detailed data separately.
+
+Your response must be a valid JSON object that includes the cache_uid field from the action response along with your analysis insights.
 
 

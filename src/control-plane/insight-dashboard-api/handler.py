@@ -53,12 +53,10 @@ def handler(event, context):
             1. TREND ANALYSIS: Examine cost and margin trends over the last 6 months for both Basic and Premium tiers. Identify the 5 most important cost per-tenant and margin trends, variations and deep insights.
             
         
-            "Response JSON": Return ONLY a JSON object in this exact format:
+            "Response JSON": Return ONLY a JSON object in this exact format.
             {
                 "trends": ["t1", "t2", "t3", "t4", "t5"],
-                "cost_per_tenant_averages": [
-                    {"month": "YYYY-MM", "tier": , "cost": xx.x, "revenue": xx.x, "margin": xx.x},
-                ] 
+                "cache_uid": "cache-uid-from-action-group"
             }
             """
             
@@ -70,11 +68,7 @@ def handler(event, context):
 
             # Add these items too to the "Response JSON":
             # {
-            #     "predictions": ["p1", "p2", "p3", "p4", "p5"],
-            #     "cost_per_tenant_predictions": [
-            #         {"month": "YYYY-MM", "tier":, "predicted_cost": xx.x, "revenue": xx.x, "predicted_margin": xx.x},
-            #         ...
-            #     ]
+            #     "predictions": ["p1", "p2", "p3", "p4", "p5"]
             # }
             # """
             # ##============= END of SECTION 2 ==============
@@ -130,15 +124,45 @@ def handler(event, context):
                 else:
                     json_text = result_text
                 
+                print(f"DEBUG: Raw agent response: {result_text}")
+                print(f"DEBUG: Extracted JSON text: {json_text}")
+                
                 # Parse JSON response from agent
                 try:
                     analysis_json = json.loads(json_text)
-                except json.JSONDecodeError:
+                    cache_uid = analysis_json.get('cache_uid')
+                    print(f"DEBUG: Parsed JSON successfully, cache_uid: {cache_uid}")
+                except json.JSONDecodeError as json_error:
+                    print(f"DEBUG: JSON decode error: {str(json_error)}")
                     analysis_json = {"error": "Invalid JSON response", "raw_text": result_text}
+                    cache_uid = None
+                
+                # Fetch cached data if cache_uid is available
+                cached_data = {}
+                if cache_uid:
+                    try:
+                        dynamodb = boto3.resource('dynamodb')
+                        cache_table = dynamodb.Table('cost-analysis')
+                        
+                        cache_response = cache_table.get_item(Key={'cache_uid': cache_uid})
+                        if 'Item' in cache_response:
+                            cached_item = cache_response['Item']
+                            cached_data = {
+                                'cost_per_tenant_averages': cached_item.get('cost_per_tenant_averages', []),
+                                'cost_per_tenant_predictions': cached_item.get('cost_per_tenant_predictions', [])
+                            }
+                            print(f"Successfully fetched cached data for UID: {cache_uid}")
+                        else:
+                            print(f"No cached data found for UID: {cache_uid}")
+                    except Exception as cache_error:
+                        print(f"Error fetching cached data: {str(cache_error)}")
+                
+                # Combine agent insights with cached data
+                final_analysis = {**analysis_json, **cached_data}
                 
                 response_body = {
                     'success': True,
-                    'analysis': analysis_json,
+                    'analysis': final_analysis,
                     'analysis_type': analysis_type,
                     'timestamp': context.aws_request_id,
                     'agent': 'cost-analysis-agent'
@@ -147,7 +171,7 @@ def handler(event, context):
                 return {
                     'statusCode': 200,
                     'headers': cors_headers,
-                    'body': json.dumps(response_body)
+                    'body': json.dumps(response_body, default=decimal_default)
                 }
                 
             except Exception as e:

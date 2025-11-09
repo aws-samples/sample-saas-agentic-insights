@@ -16,6 +16,7 @@ interface CostAnalysisAgentStackProps extends cdk.StackProps {
 export class CostAnalysisAgentStack extends cdk.Stack {
   public readonly costAnalysisAgent: bedrock.CfnAgent;
   public readonly costAnalysisAgentAlias: bedrock.CfnAgentAlias;
+  public readonly costAnalysisCacheTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: CostAnalysisAgentStackProps) {
     super(scope, id, props);
@@ -33,6 +34,18 @@ export class CostAnalysisAgentStack extends cdk.Stack {
     // Load agent instructions
     const agentInstructions = fs.readFileSync(agentInstructionsPath, 'utf8').trim();
 
+    // Create cost analysis cache table
+    const costAnalysisCacheTable = new dynamodb.Table(this, 'CostAnalysisCacheTable', {
+      tableName: 'cost-analysis',
+      partitionKey: { name: 'cache_uid', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'ttl',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Export the cache table for use in other stacks
+    this.costAnalysisCacheTable = costAnalysisCacheTable;
+
     // Action Group Lambda Function
     const getCostDatasetFunction = new lambda.Function(this, 'GetCostDatasetFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
@@ -41,6 +54,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(60),
       environment: {
         COST_PER_TENANT_TABLE_NAME: props.costPerTenantTable.tableName,
+        COST_ANALYSIS_CACHE_TABLE_NAME: costAnalysisCacheTable.tableName,
       },
     });
 
@@ -49,6 +63,7 @@ export class CostAnalysisAgentStack extends cdk.Stack {
 
     // Grant DynamoDB permissions
     props.costPerTenantTable.grantReadData(getCostDatasetFunction);
+    costAnalysisCacheTable.grantReadWriteData(getCostDatasetFunction);
 
     // Bedrock Agent IAM Role
     const agentRole = new iam.Role(this, 'CostAnalysisAgentRole', {

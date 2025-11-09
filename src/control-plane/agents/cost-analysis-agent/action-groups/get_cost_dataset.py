@@ -3,9 +3,21 @@ import boto3
 import os
 import random
 import math
+import time
 from datetime import datetime, timedelta
 from decimal import Decimal
 from collections import defaultdict
+
+def convert_floats_to_decimal(obj):
+    """Recursively convert all float values to Decimal for DynamoDB compatibility"""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: convert_floats_to_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimal(item) for item in obj]
+    else:
+        return obj
 
 def handler(event, context):
     """
@@ -13,21 +25,22 @@ def handler(event, context):
     Action: getCostPerTenantDataset
     
     Fetches CostPerTenant dataset, calculates averages per month per tier,
-    and generates cost predictions for next 6 months using Monte Carlo simulation
+    generates cost predictions, saves to cache table, and returns cache UID
     """
     
     try:
-        # Get CostPerTenant table
+        # Get DynamoDB resources
         dynamodb = boto3.resource('dynamodb')
-        table = dynamodb.Table(os.environ['COST_PER_TENANT_TABLE_NAME'])
+        cost_table = dynamodb.Table(os.environ['COST_PER_TENANT_TABLE_NAME'])
+        cache_table = dynamodb.Table(os.environ['COST_ANALYSIS_CACHE_TABLE_NAME'])
         
-        # Scan entire table
-        response = table.scan()
+        # Scan entire cost table
+        response = cost_table.scan()
         items = response['Items']
         
         # Handle pagination if needed
         while 'LastEvaluatedKey' in response:
-            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            response = cost_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
             items.extend(response['Items'])
         
         # Group data by month and tier for averaging
@@ -36,9 +49,17 @@ def handler(event, context):
         for item in items:
             month = item.get('month', '')
             tier = item.get('tier', '')
-            cost = float(item.get('cost', 0))
-            revenue = float(item.get('revenue', 0))
-            margin = float(item.get('margin', 0))
+            cost = item.get('cost', 0)
+            revenue = item.get('revenue', 0)
+            margin = item.get('margin', 0)
+            
+            # Convert Decimal to float for calculations
+            if isinstance(cost, Decimal):
+                cost = float(cost)
+            if isinstance(revenue, Decimal):
+                revenue = float(revenue)
+            if isinstance(margin, Decimal):
+                margin = float(margin)
             
             key = (month, tier)
             grouped[key]['costs'].append(cost)
@@ -66,24 +87,33 @@ def handler(event, context):
         # Generate Monte Carlo predictions for next 6 months
         cost_predictions = generate_monte_carlo_predictions(averaged_data)
         
-        result = {
+        # Create cache UID and save to cache table
+        cache_uid = f"cost-data-{int(time.time())}"
+        ttl = int(time.time()) + 3600  # 1 hour TTL
+        
+        # Convert all float values to Decimal for DynamoDB compatibility
+        cache_item = {
+            'cache_uid': cache_uid,
+            'cost_per_tenant_averages': convert_floats_to_decimal(averaged_data),
+            'cost_per_tenant_predictions': convert_floats_to_decimal(cost_predictions),
+            'computed_at': datetime.utcnow().isoformat(),
             'total_records': len(items),
-            'cost_per_tenant_averages': averaged_data,
-            'cost_per_tenant_predictions': cost_predictions,
-            'prediction_metadata': {
-                'method': 'monte_carlo_simulation',
-                'simulation_runs': 1000,
-                'confidence_level': '80_percent',
-                'forecast_months': 6
-            }
+            'ttl': ttl
         }
         
+        # Save to cache table
+        cache_table.put_item(Item=cache_item)
+        
         print(f"DEBUG: Processed {len(items)} records into {len(averaged_data)} averaged records")
-        print("DEBUG: Averaged Dataset JSON:")
-        print(json.dumps(averaged_data, indent=2))
         print(f"DEBUG: Generated {len(cost_predictions)} Monte Carlo predictions")
-        print("DEBUG: Cost Predictions JSON:")
-        print(json.dumps(cost_predictions, indent=2))
+        print(f"DEBUG: Saved to cache with UID: {cache_uid}")
+        
+        # Return response with actual data for agent analysis
+        result = {
+            'cache_uid': cache_uid,
+            'cost_per_tenant_averages': averaged_data,
+            'cost_per_tenant_predictions': cost_predictions
+        }
         
         return {
             'messageVersion': '1.0',
@@ -126,7 +156,7 @@ def generate_monte_carlo_predictions(historical_data, months=6, simulations=1000
     """
     predictions = []
     
-    # Revenue per tier (fixed)
+    # Revenue per tier (fixed) - use floats for calculations
     tier_revenue = {
         'basic': 29.0,
         'premium': 99.0
@@ -137,7 +167,11 @@ def generate_monte_carlo_predictions(historical_data, months=6, simulations=1000
         tier_records = []
         for record in historical_data:
             if record['tier'] == tier:
-                tier_records.append((record['month'], float(record['cost'])))
+                cost_value = record['cost']
+                # Ensure cost is float for calculations
+                if isinstance(cost_value, Decimal):
+                    cost_value = float(cost_value)
+                tier_records.append((record['month'], cost_value))
         
         tier_records.sort(key=lambda x: x[0])  # Sort by month
         tier_costs = [cost for _, cost in tier_records]
@@ -175,10 +209,11 @@ def generate_monte_carlo_predictions(historical_data, months=6, simulations=1000
             future_month_str = get_future_month(month, historical_data)
             future_month_num = int(future_month_str.split('-')[1])
             
-            # Aggressive seasonal patterns based on historical extremes
+            # Aggressive seasonal patterns based on historical extremes - use floats for calculations
             seasonal_factors = {
-                1: 0.6, 2: 0.5, 3: 1.4, 4: 1.2, 5: 0.4, 6: 1.0,
-                7: 0.3, 8: 1.8, 9: 1.0, 10: 0.5, 11: 2.0, 12: 1.5
+                1: 0.6, 2: 0.5, 3: 1.4, 4: 1.2, 
+                5: 0.4, 6: 1.0, 7: 0.3, 8: 1.8, 
+                9: 1.0, 10: 0.5, 11: 2.0, 12: 1.5
             }
             seasonal_factor = seasonal_factors.get(future_month_num, 1.0)
             

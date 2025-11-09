@@ -171,6 +171,18 @@ export class ControlPlaneStack extends cdk.Stack {
       ],
     }));
 
+    // Grant DynamoDB permissions to access cost analysis cache table
+    insightDashboardApiFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:Query',
+      ],
+      resources: [
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/cost-analysis`,
+      ],
+    }));
+
     this.eventBus.grantPutEventsTo(tenantManagementFunction);
 
     // Grant CDK permissions to tenant provisioning function for dynamic resource creation
