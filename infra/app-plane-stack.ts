@@ -498,7 +498,7 @@ export class AppPlaneStack extends cdk.Stack {
     });
 
     // AI Product Description Components
-    this.addAIDescriptionComponents();
+    this.addAIDescriptionComponents(props);
 
     // Outputs
     new cdk.CfnOutput(this, 'AppPlaneApiUrl', {
@@ -567,7 +567,7 @@ export class AppPlaneStack extends cdk.Stack {
     }
   }
 
-  private addAIDescriptionComponents() {
+  private addAIDescriptionComponents(props: AppPlaneStackProps) {
     // Load agent configuration
     const agentConfigPath = path.join(__dirname, '../src/app-plane/agents/product-desc/agent-config.yaml');
     const agentInstructionsPath = path.join(__dirname, '../src/app-plane/agents/product-desc/instructions.txt');
@@ -648,11 +648,13 @@ export class AppPlaneStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/app-plane/product-desc'),
+      layers: props.metricsCollectorLayer ? [props.metricsCollectorLayer] : [],
       environment: {
         BEDROCK_AGENT_ID: this.bedrockAgent.attrAgentId,
         BEDROCK_AGENT_ALIAS_ID: this.bedrockAgentAlias.attrAgentAliasId,
         CLAUDE_INPUT_TOKEN_PRICE: '0.00025',
         CLAUDE_OUTPUT_TOKEN_PRICE: '0.00125',
+        METRICS_EVENT_BUS_NAME: props.metricsEventBusName || props.eventBus.eventBusName,
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -681,6 +683,15 @@ export class AppPlaneStack extends cdk.Stack {
         `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`,
       ],
     }));
+
+    // EventBridge permissions for metrics publishing
+    if (props.metricsCollectorLayer) {
+      productDescFunction.addToRolePolicy(new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['events:PutEvents'],
+        resources: [props.eventBus.eventBusArn],
+      }));
+    }
 
     // Create AI resource
     const aiResource = this.appPlaneApi.root.addResource('ai');
