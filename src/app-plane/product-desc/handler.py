@@ -3,9 +3,22 @@ import boto3
 import os
 import time
 import re
+import logging
 from datetime import datetime
 from typing import Dict, Any
 from decimal import Decimal
+
+# Import metrics collector from Lambda Layer
+try:
+    from metrics_collector import MetricsCollector
+    METRICS_ENABLED = True
+except ImportError:
+    METRICS_ENABLED = False
+    print("Metrics collector not available - running without metrics")
+
+# Configure structured logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Global CORS headers
 cors_headers = {
@@ -52,7 +65,10 @@ CLAUDE_INPUT_TOKEN_PRICE = float(os.environ.get('CLAUDE_INPUT_TOKEN_PRICE', '0.0
 CLAUDE_OUTPUT_TOKEN_PRICE = float(os.environ.get('CLAUDE_OUTPUT_TOKEN_PRICE', '0.000015'))
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Handle AI product description generation requests"""
+    """Handle AI product description generation requests with metrics instrumentation"""
+    
+    start_time = time.time()
+    
     try:
         http_method = event['httpMethod']
         
@@ -71,7 +87,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         tier = authorizer_context.get('tier', 'basic')
         user_id = authorizer_context.get('user_id')
         
+        # Initialize metrics collector
+        metrics = None
+        if METRICS_ENABLED and tenant_id and tier:
+            metrics = MetricsCollector("ai-description-service", tenant_id, tier)
+        
         if not tenant_id:
+            logger.error(json.dumps({
+                "event": "missing_tenant_context",
+                "authorizer_context": authorizer_context
+            }))
             return {
                 'statusCode': 403,
                 'headers': cors_headers,
@@ -79,13 +104,46 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
         
         if http_method == 'POST':
-            return generate_description(event, tenant_id, tier, user_id)
+            result = generate_description(event, tenant_id, tier, user_id, context, metrics)
         else:
-            return {
+            result = {
                 'statusCode': 405,
                 'headers': cors_headers,
                 'body': json.dumps({'error': 'Method not allowed', 'status': 'error'})
             }
+        
+        # Track Lambda execution metrics
+        if metrics:
+            execution_time = (time.time() - start_time) * 1000
+            metrics.track_lambda_execution(
+                function_name=context.function_name,
+                memory_mb=int(context.memory_limit_in_mb),
+                duration_ms=execution_time
+            )
+        
+        return result
+            
+    except Exception as e:
+        logger.error(json.dumps({
+            "event": "product_desc_service_error",
+            "error": str(e),
+            "error_type": type(e).__name__
+        }))
+        result = {
+            'statusCode': 500,
+            'headers': cors_headers,
+            'body': json.dumps({'error': 'Internal server error', 'status': 'error'})
+        }
+        # Track error response
+        if metrics:
+            execution_time = (time.time() - start_time) * 1000
+            metrics.track_lambda_execution(
+                function_name=context.function_name,
+                memory_mb=int(context.memory_limit_in_mb),
+                duration_ms=execution_time
+            )
+        
+        return result
             
     except Exception as e:
         print(f"Product description service error: {str(e)}")
@@ -95,8 +153,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'body': json.dumps({'error': 'Internal server error', 'status': 'error'})
         }
 
-def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_id: str) -> Dict[str, Any]:
-    """Generate AI product description using Bedrock agent"""
+def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_id: str, context: Any, metrics=None) -> Dict[str, Any]:
+    """Generate AI product description using Bedrock agent with metrics tracking"""
     try:
         # Parse request body
         body = json.loads(event['body']) if isinstance(event.get('body'), str) else event.get('body', {})
@@ -180,6 +238,15 @@ def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_
             # Calculate costs and usage
             response_time = time.time() - start_time
             usage_data = calculate_usage_and_cost(input_tokens, output_tokens, tenant_id, tier, response_time)
+            
+            # Track Bedrock invocation metrics
+            if metrics:
+                metrics.track_bedrock_invocation(
+                    model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    user_id=user_id
+                )
             
             # Log usage for monitoring
             log_usage(tenant_id, tier, user_id, product_name, usage_data, response_time)

@@ -81,7 +81,7 @@ aws bedrock-runtime invoke-model \
     ]
   }' | base64)" \
   --region us-east-1 \
-  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+  output_model_access_test_1.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
 
 # Test model access (may fail if access not yet granted)
 print_status "[Model Access 2] Testing model access for Global Claude Haiku 4.5..."
@@ -98,7 +98,7 @@ aws bedrock-runtime invoke-model \
     ]
   }' | base64)" \
   --region us-east-1 \
-  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+  output_model_access_test_2.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
 
 # Test model access (may fail if access not yet granted)
 print_status "[Model Access 3] Testing model access for US Claude Sonnet 4.5..."
@@ -115,7 +115,7 @@ aws bedrock-runtime invoke-model \
     ]
   }' | base64)" \
   --region us-east-1 \
-  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+  output_model_access_test_3.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
 
 
 # Test model access (may fail if access not yet granted)
@@ -133,4 +133,4 @@ aws bedrock-runtime invoke-model \
     ]
   }' | base64)" \
   --region us-east-1 \
-  output_model_access_test.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"
+  output_model_access_test_4.json 2>&1 && print_success "Model access confirmed" || print_status "Model access not yet granted (this is expected and can take up to 15 minutes)"

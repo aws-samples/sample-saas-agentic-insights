@@ -474,6 +474,11 @@ body {
 }
 
 /* Form Styles */
+#product-form,
+#user-form {
+    padding: 1.5rem;
+}
+
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -510,6 +515,63 @@ body {
     padding: 1.5rem;
     border-top: 1px solid #e9ecef;
     margin: 0 -1.5rem -1.5rem;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+}
+
+.form-actions button {
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+}
+
+.form-actions button[type="submit"],
+#save-product-btn,
+#save-user-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.form-actions button[type="submit"]:hover,
+#save-product-btn:hover,
+#save-user-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.form-actions button[type="submit"]:disabled,
+#save-product-btn:disabled,
+#save-user-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.form-actions button[type="button"],
+#cancel-product-btn,
+#cancel-user-btn {
+    background: white;
+    color: #666;
+    border: 2px solid #e9ecef;
+}
+
+.form-actions button[type="button"]:hover,
+#cancel-product-btn:hover,
+#cancel-user-btn:hover {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+    color: #333;
+}
+
+#product-error,
+#user-error {
+    margin: 0 1.5rem 1.5rem;
 }
 
 /* Messages */
@@ -638,14 +700,14 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .generate-btn {
     align-self: flex-end;
     min-width: 100px;
     font-size: 0.9em;
-    padding: 6px 12px;
+    padding: 8px 16px;
 }
 
 .generate-btn:disabled {

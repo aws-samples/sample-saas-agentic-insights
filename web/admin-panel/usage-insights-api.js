@@ -50,14 +50,29 @@ const UsageInsightsAPI = {
             if (error.isApiError) {
                 throw error;
             }
-            
+
             // Handle network errors
-            const networkError = new Error('Network error. Please check your connection and try again.');
+            const errorDetails = [];
+            errorDetails.push(`Failed to connect to ${url}`);
+            errorDetails.push(`Analysis: ${analysisType}`);
+
+            if (error.message) {
+                errorDetails.push(`Reason: ${error.message}`);
+            }
+
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorDetails.push('This may be caused by: network connectivity issues, CORS restrictions, or the server being unavailable');
+            } else if (error.name === 'AbortError') {
+                errorDetails.push('The request timed out. The server may be slow or unresponsive');
+            }
+
+            const networkError = new Error(`Network error: ${errorDetails.join('. ')}. Please check your connection and try again.`);
             networkError.isApiError = true;
             networkError.code = 'NETWORK_ERROR';
             networkError.status = 0;
             networkError.retryable = true;
-            
+            networkError.originalError = error;
+
             throw networkError;
         }
     },

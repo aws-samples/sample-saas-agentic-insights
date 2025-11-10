@@ -213,7 +213,7 @@ def create_premium_user_pool(pool_name: str, tenant_id: str) -> str:
         
         user_pool_id = response['UserPool']['Id']
         
-        # Create user pool client
+        # Create user pool client with extended token validity
         client_response = cognito_client.create_user_pool_client(
             UserPoolId=user_pool_id,
             ClientName=f"{pool_name}-client",
@@ -223,7 +223,15 @@ def create_premium_user_pool(pool_name: str, tenant_id: str) -> str:
                 'ALLOW_USER_PASSWORD_AUTH',
                 'ALLOW_USER_SRP_AUTH',
                 'ALLOW_REFRESH_TOKEN_AUTH'
-            ]
+            ],
+            AccessTokenValidity=8,   # 8 hours for tenant admin users
+            IdTokenValidity=8,       # 8 hours for tenant admin users
+            RefreshTokenValidity=30, # 30 days refresh
+            TokenValidityUnits={
+                'AccessToken': 'hours',
+                'IdToken': 'hours',
+                'RefreshToken': 'days'
+            }
         )
         
         print(f"Created Cognito User Pool: {user_pool_id} for tenant {tenant_id}")
