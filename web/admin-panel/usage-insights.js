@@ -162,12 +162,30 @@ const UsageInsightsDashboard = {
         console.log('Applied visibility styles and scrolled to content');
     },
 
+    // Update button states to show which analysis is selected
+    updateButtonStates(selectedType) {
+        const buttons = document.querySelectorAll('.insights-btn');
+        buttons.forEach(button => {
+            const buttonType = button.getAttribute('data-analysis-type');
+            if (buttonType === selectedType) {
+                // Add selected state styling
+                button.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-gray-900');
+            } else {
+                // Remove selected state styling
+                button.classList.remove('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-gray-900');
+            }
+        });
+    },
+
     // Load specific analysis
     async loadAnalysis(analysisType) {
         if (this.state.isLoading) return;
 
         this.state.isLoading = true;
         this.state.currentAnalysis = analysisType;
+
+        // Update button states to show selection
+        this.updateButtonStates(analysisType);
 
         const analysisNames = {
             'ttv': 'Time to Value Analysis',
@@ -270,6 +288,21 @@ const UsageInsightsDashboard = {
         const tenantAnalysis = data.tenant_analysis || [];
         const platformBenchmark = data.summary?.platform_benchmark || {};
         const recommendations = data.recommendations || [];
+
+        // Check if no TTV data is available
+        if (!platformBenchmark.mean_ttv_days || platformBenchmark.mean_ttv_days === 0) {
+            resultsContainer.innerHTML = `
+                <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                    <div class="text-center py-8">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"></path>
+                        </svg>
+                        <p class="text-gray-300 text-lg">No Time to Value insights available</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
 
         resultsContainer.innerHTML = `
             <div class="space-y-6">
@@ -383,6 +416,22 @@ const UsageInsightsDashboard = {
         const segments = data.data?.segments || {};
         const recommendations = data.recommendations || [];
 
+        // Check if no CLTV data is available
+        if (projections.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                    <div class="text-center py-8">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"></path>
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"></path>
+                        </svg>
+                        <p class="text-gray-300 text-lg">No CLTV Projection insights available</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         resultsContainer.innerHTML = `
             <div class="space-y-6">
                 <!-- Segment Overview -->
@@ -436,39 +485,51 @@ const UsageInsightsDashboard = {
 
         resultsContainer.innerHTML = `
             <div class="space-y-6">
-                <!-- Feature Adoption Chart -->
-                <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
-                    <h3 class="text-lg font-semibold text-white mb-4">Feature Adoption Rates</h3>
-                    <div class="space-y-3">
-                        ${features.map((feature, index) => {
-            const adoptionRate = feature.adoption_rate || 0;
-            const isLowAdoption = adoptionRate < 20;
-            return `
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center space-x-3">
-                                            <span class="text-gray-400 font-mono text-sm">#${index + 1}</span>
-                                            <span class="font-medium text-white">${feature.feature_name}</span>
-                                            ${isLowAdoption ? '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Low Adoption</span>' : ''}
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-lg font-bold ${isLowAdoption ? 'text-red-400' : 'text-green-400'}">
-                                                ${adoptionRate.toFixed(1)}%
+                ${features.length > 0 ? `
+                    <!-- Feature Adoption Chart -->
+                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4">Feature Adoption Rates</h3>
+                        <div class="space-y-3">
+                            ${features.map((feature, index) => {
+                const adoptionRate = feature.adoption_rate || 0;
+                const isLowAdoption = adoptionRate < 20;
+                return `
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="text-gray-400 font-mono text-sm">#${index + 1}</span>
+                                                <span class="font-medium text-white">${feature.feature_name}</span>
+                                                ${isLowAdoption ? '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Low Adoption</span>' : ''}
                                             </div>
-                                            <div class="text-xs text-gray-400">${feature.feature_users}/${feature.active_users} users</div>
+                                            <div class="text-right">
+                                                <div class="text-lg font-bold ${isLowAdoption ? 'text-red-400' : 'text-green-400'}">
+                                                    ${adoptionRate.toFixed(1)}%
+                                                </div>
+                                                <div class="text-xs text-gray-400">${feature.feature_users}/${feature.active_users} users</div>
+                                            </div>
+                                        </div>
+                                        <div class="w-full bg-gray-700 rounded-full h-2">
+                                            <div class="h-2 rounded-full ${isLowAdoption ? 'bg-red-500' : 'bg-green-500'}" style="width: ${adoptionRate}%"></div>
                                         </div>
                                     </div>
-                                    <div class="w-full bg-gray-700 rounded-full h-2">
-                                        <div class="h-2 rounded-full ${isLowAdoption ? 'bg-red-500' : 'bg-green-500'}" style="width: ${adoptionRate}%"></div>
-                                    </div>
-                                </div>
-                            `;
-        }).join('')}
+                                `;
+            }).join('')}
+                        </div>
                     </div>
-                </div>
+                ` : `
+                    <!-- No Features Message -->
+                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                        <div class="text-center py-8">
+                            <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                            </svg>
+                            <p class="text-gray-300">No feature adoption data available.</p>
+                        </div>
+                    </div>
+                `}
 
                 <!-- Recommendations -->
-                ${this.renderRecommendations(recommendations)}
+                ${features.length > 0 ? this.renderRecommendations(recommendations) : ''}
             </div>
         `;
     },
@@ -485,10 +546,25 @@ const UsageInsightsDashboard = {
         const tierBreakdown = data.tier_breakdown || {};
         const recommendations = data.recommendations || [];
 
+        // Check if no engagement data is available
+        if (!platformBenchmark.mean_engagement_score || platformBenchmark.mean_engagement_score === 0) {
+            resultsContainer.innerHTML = `
+                <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                    <div class="text-center py-8">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path>
+                        </svg>
+                        <p class="text-gray-300 text-lg">No User Engagement insights available</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         resultsContainer.innerHTML = `
             <div class="space-y-6">
                 <!-- Summary Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
                         <div class="text-gray-400 text-sm">Mean Engagement</div>
                         <div class="text-2xl font-bold text-white">${platformBenchmark.mean_engagement_score?.toFixed(1) || 'N/A'}</div>
@@ -496,21 +572,6 @@ const UsageInsightsDashboard = {
                     <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
                         <div class="text-gray-400 text-sm">Median Engagement</div>
                         <div class="text-2xl font-bold text-white">${platformBenchmark.median_engagement_score?.toFixed(1) || 'N/A'}</div>
-                    </div>
-                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
-                        <div class="text-gray-400 text-sm">High Engagement</div>
-                        <div class="text-2xl font-bold text-green-400">${distribution.high || 0}</div>
-                        <div class="text-xs text-gray-400 mt-1">Score > 70</div>
-                    </div>
-                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
-                        <div class="text-gray-400 text-sm">Medium Engagement</div>
-                        <div class="text-2xl font-bold text-yellow-400">${distribution.medium || 0}</div>
-                        <div class="text-xs text-gray-400 mt-1">Score 40-70</div>
-                    </div>
-                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
-                        <div class="text-gray-400 text-sm">Low Engagement</div>
-                        <div class="text-2xl font-bold text-red-400">${distribution.low || 0}</div>
-                        <div class="text-xs text-gray-400 mt-1">Score < 40</div>
                     </div>
                 </div>
 
@@ -680,8 +741,23 @@ const UsageInsightsDashboard = {
         if (!resultsContainer) return;
 
         const summary = data.summary || {};
-        const insights = data.insights || [];
+        const atRiskFeatures = data.at_risk_features || [];
         const recommendations = data.recommendations || [];
+
+        // Check if no features were analyzed
+        if (!summary.total_features_analyzed || summary.total_features_analyzed === 0) {
+            resultsContainer.innerHTML = `
+                <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                    <div class="text-center py-8">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                        </svg>
+                        <p class="text-gray-300 text-lg">No At-Risk Features insights available</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
 
         resultsContainer.innerHTML = `
             <div class="space-y-6">
@@ -705,37 +781,67 @@ const UsageInsightsDashboard = {
                     </div>
                 </div>
 
-                <!-- AI Insights -->
-                ${insights.length > 0 ? `
-                    <div class="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"></path>
-                            </svg>
-                            AI Insights
-                        </h3>
+                <!-- At-Risk Features Details -->
+                ${atRiskFeatures.length > 0 ? `
+                    <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4">At-Risk Features</h3>
                         <div class="space-y-3">
-                            ${insights.map(insight => {
-            const priorityStyle = UsageInsightsAPI.getPriorityStyling(insight.priority);
+                            ${atRiskFeatures.map(feature => {
+            const riskColor = feature.risk_level === 'critical' ? 'text-red-400' : 'text-yellow-400';
+            const riskBg = feature.risk_level === 'critical' ? 'bg-red-900/30' : 'bg-yellow-900/30';
+            const riskBorder = feature.risk_level === 'critical' ? 'border-red-500/50' : 'border-yellow-500/50';
             return `
-                                    <div class="bg-gray-800/50 rounded-lg p-4">
-                                        <div class="flex items-start space-x-3">
-                                            <span class="${priorityStyle.badge} text-xs px-2 py-1 rounded border capitalize flex-shrink-0">${insight.priority}</span>
+                                    <div class="bg-gray-700/30 border ${riskBorder} rounded-lg p-4">
+                                        <div class="flex items-start justify-between mb-3">
                                             <div class="flex-1">
-                                                <div class="font-medium text-white mb-1">${insight.action}</div>
-                                                ${insight.rationale ? `<div class="text-sm text-gray-300 mb-2">${insight.rationale}</div>` : ''}
-                                                ${insight.impact ? `<div class="text-xs text-gray-400">Expected Impact: <span class="font-medium">${insight.impact}</span></div>` : ''}
+                                                <div class="font-semibold text-white text-lg mb-1">${feature.feature_name}</div>
+                                                <span class="${riskBg} ${riskColor} text-xs px-2 py-1 rounded capitalize">${feature.risk_level} Risk</span>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-sm text-gray-400">Decline Rate</div>
+                                                <div class="text-xl font-bold ${riskColor}">${feature.decline_rate?.toFixed(1)}%</div>
                                             </div>
                                         </div>
+                                        
+                                        <div class="grid grid-cols-2 gap-3 mb-3">
+                                            <div class="bg-gray-800/50 rounded p-2">
+                                                <div class="text-xs text-gray-400">Adoption Rate</div>
+                                                <div class="text-sm font-medium text-white">${feature.adoption_rate?.toFixed(1)}%</div>
+                                            </div>
+                                            <div class="bg-gray-800/50 rounded p-2">
+                                                <div class="text-xs text-gray-400">Current Users</div>
+                                                <div class="text-sm font-medium text-white">${feature.current_period_summary?.unique_users || 0}</div>
+                                            </div>
+                                        </div>
+
+                                        ${feature.trend_analysis ? `
+                                            <div class="bg-gray-800/50 rounded p-3 mb-3">
+                                                <div class="text-xs font-semibold text-gray-300 mb-1">Trend Analysis:</div>
+                                                <div class="text-sm text-gray-400">${feature.trend_analysis}</div>
+                                            </div>
+                                        ` : ''}
+
+                                        ${feature.key_insights && feature.key_insights.length > 0 ? `
+                                            <div class="bg-gray-800/50 rounded p-3">
+                                                <div class="text-xs font-semibold text-gray-300 mb-2">Key Insights:</div>
+                                                <ul class="space-y-1">
+                                                    ${feature.key_insights.map(insight => `
+                                                        <li class="text-sm text-gray-400 flex items-start">
+                                                            <svg class="w-4 h-4 mr-2 mt-0.5 ${riskColor} flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            ${insight}
+                                                        </li>
+                                                    `).join('')}
+                                                </ul>
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 `;
         }).join('')}
                         </div>
                     </div>
-                ` : ''}
-
-                <!-- At-Risk Features -->
-                ${summary.at_risk_features_count === 0 ? `
+                ` : summary.at_risk_features_count === 0 ? `
                     <div class="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
                         <div class="text-center py-8">
                             <svg class="w-16 h-16 mx-auto mb-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
@@ -765,6 +871,7 @@ const UsageInsightsDashboard = {
                                             <div class="flex-1">
                                                 ${rec.feature_name ? `<div class="text-xs text-gray-400 mb-1">Feature: <span class="font-medium text-gray-300">${rec.feature_name}</span></div>` : ''}
                                                 <div class="font-medium text-white mb-2">${rec.action}</div>
+                                                ${rec.rationale ? `<div class="text-sm text-gray-300 mb-3">${rec.rationale}</div>` : ''}
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                                                     ${rec.expected_impact ? `
                                                         <div class="bg-gray-700/50 rounded p-2">
