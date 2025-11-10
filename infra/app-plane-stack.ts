@@ -597,7 +597,7 @@ export class AppPlaneStack extends cdk.Stack {
                 'bedrock:ListInferenceProfiles'
               ],
               resources: [
-                `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-*`,
+                `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*`,
                 `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`
               ]
             })
@@ -677,7 +677,7 @@ export class AppPlaneStack extends cdk.Stack {
       resources: [
         this.bedrockAgent.attrAgentArn,
         `arn:aws:bedrock:${this.region}:${this.account}:agent-alias/${this.bedrockAgent.attrAgentId}/${this.bedrockAgentAlias.attrAgentAliasId}`,
-        `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-*`,
+        `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*`,
         `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`,
       ],
     }));
