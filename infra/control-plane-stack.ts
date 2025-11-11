@@ -60,6 +60,9 @@ export class ControlPlaneStack extends cdk.Stack {
         userSrp: true,
         adminUserPassword: true,  // Required for AdminInitiateAuth
       },
+      accessTokenValidity: cdk.Duration.hours(8),  // 8 hours for admin users
+      idTokenValidity: cdk.Duration.hours(8),      // 8 hours for admin users
+      refreshTokenValidity: cdk.Duration.days(30), // 30 days refresh
     });
 
     // Tenant Management Service Lambda
