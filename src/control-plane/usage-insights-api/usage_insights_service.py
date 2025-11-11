@@ -994,8 +994,64 @@ class UsageInsightsService:
         if analysis_type == 'ttv':
             return {
                 'action': 'calculate_time_to_value',
-                **base_input,
-                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
+                **base_input
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                # ,'instructions': '''TIME TO VALUE (TTV) ANALYSIS
+
+                # ANALYSIS REQUIREMENTS:
+                # - Compare each tenant's TTV vs platform benchmarks
+                # - Identify best/worst performers
+                # - Segment by tier
+                # - Flag tenants with no interaction
+                # - Calculate standard deviations from mean
+                # - Use percentile rankings
+
+                # "Response JSON": Return ONLY a JSON object in this exact format.
+                # {
+                #   "analysis_type": "time_to_value",
+                #   "timestamp": "ISO 8601 string",
+                #   "summary": {
+                #     "requested_tenant_id": "string",
+                #     "tenants_analyzed": number,
+                #     "platform_benchmark": {
+                #       "mean_ttv_days": number,
+                #       "median_ttv_days": number,
+                #       "percentile_25": number,
+                #       "percentile_75": number,
+                #       "percentile_90": number
+                #     }
+                #   },
+                #   "tenant_analysis": [
+                #     {
+                #       "tenant_id": "string",
+                #       "tenant_name": "string",
+                #       "tier": "string",
+                #       "ttv_days": number,
+                #       "performance_vs_platform": "above_average|below_average|average",
+                #       "percentile_rank": number,
+                #       "comparison_to_mean": "string",
+                #       "comparison_to_tier": "string",
+                #       "status": "string",
+                #       "insights": ["string"]
+                #     }
+                #   ],
+                #   "tier_breakdown": {
+                #     "basic": {"count": number, "mean_ttv": number, "median_ttv": number},
+                #     "premium": {"count": number, "mean_ttv": number, "median_ttv": number}
+                #   },
+                #   "key_findings": ["string"],
+                #   "recommendations": [
+                #     {
+                #       "priority": "critical|high|medium|low",
+                #       "target": "string",
+                #       "action": "string",
+                #       "rationale": "string",
+                #       "expected_impact": "string",
+                #       "timeline": "string"
+                #     }
+                #   ]
+                # }
+                # '''
             }
         
         elif analysis_type == 'cltv':
@@ -1003,8 +1059,55 @@ class UsageInsightsService:
             return {
                 'action': 'project_customer_lifetime_value',
                 **base_input,
-                'projection_months': projection_months,
-                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
+                'projection_months': projection_months
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                # ,'instructions': '''CUSTOMER LIFETIME VALUE (CLTV) ANALYSIS
+
+                # CALCULATION APPROACH:
+                # - Project revenue over 12-month horizon
+                # - Use cohort analysis by tier and onboarding period
+                # - Factor in historical retention metrics
+                # - Calculate confidence intervals for projections
+                
+                # ANALYSIS REQUIREMENTS:
+                # - Calculate projected CLTV for each tenant
+                # - Segment by tier (Basic vs Premium)
+                # - Identify high-value customer segments
+                # - Compare actual vs projected performance
+                # - Rank tenants by CLTV potential
+                # - Generate retention recommendations
+                # - Ensure insights and recommendations are not more than 3, and within 10 tokens each
+               
+                # "Response JSON": Return ONLY a JSON object in this exact format.
+                # {
+                #   "analysis_type": "customer_lifetime_value",
+                #   "timestamp": "ISO 8601 string",
+                #   "tenant_id": "string",
+                #   "data": {
+                #     "tenant_projections": [
+                #       {
+                #         "tenant_name": "string",
+                #         "tier": "basic|premium|enterprise|unknown",
+                #         "retention_rate": number,
+                #         "projected_cltv_12m": number,
+                #         "segment": "high_value|medium_value|at_risk"
+                #       }
+                #     ],
+                #     "segments": {
+                #       "high_value": {"count": number, "avg_cltv": number},
+                #       "medium_value": {"count": number, "avg_cltv": number},
+                #       "at_risk": {"count": number, "avg_cltv": number}
+                #     }
+                #   },
+                #   "recommendations": [
+                #     {
+                #       "priority": "critical|high|medium|low",
+                #       "action": "string",
+                #       "rationale": "string"
+                #     }
+                #   ]
+                # }
+                # '''
             }
         
         elif analysis_type == 'feature_adoption':
@@ -1012,16 +1115,121 @@ class UsageInsightsService:
             return {
                 'action': 'analyze_feature_adoption_rates',
                 **base_input,
-                'time_period_days': time_period_days,
-                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
+                'time_period_days': time_period_days
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                # ,'instructions': '''FEATURE ADOPTION ANALYSIS
+                
+                # FEATURE ADOPTION RATE CALCULATION:
+                # - adoption_rate = (unique_users_using_feature / total_active_users) * 100
+                # - Segment by tier (Basic vs Premium)
+                # - Compare adoption across features
+                
+                # ANALYSIS REQUIREMENTS:
+                # - Calculate adoption rate for each feature
+                # - Identify features with highest and lowest adoption
+                # - Compare adoption between Basic and Premium tiers
+                # - Analyze adoption trends over time
+                # - Identify correlation between feature adoption and tenant success
+                # - Generate recommendations for improving adoption
+
+                # "Response JSON": Return ONLY a JSON object in this exact format.
+                # {
+                #   "analysis_type": "feature_adoption",
+                #   "timestamp": "ISO 8601 string",
+                #   "tenant_id": "string",
+                #   "data": {
+                #     "features": [
+                #       {
+                #         "feature_name": "string",
+                #         "adoption_rate": number,
+                #         "feature_users": number,
+                #         "active_users": number
+                #       }
+                #     ]
+                #   },
+                #   "recommendations": [
+                #     {
+                #       "priority": "critical|high|medium|low",
+                #       "action": "string",
+                #       "rationale": "string"
+                #     }
+                #   ]
+                # }
+                # '''
             }
         
         elif analysis_type == 'engagement':
             return {
                 'action': 'calculate_engagement_scores',
                 **base_input,
-                'user_id': request_data.get('user_id'),
-                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
+                'user_id': request_data.get('user_id')
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                # ,'instructions': '''USER ENGAGEMENT ANALYSIS
+               
+                # SCORING FORMULA:
+                # engagement_score = (activity_frequency * 0.40) + (feature_diversity * 0.40) + (request_volume_score * 0.20)
+                # where request_volume_score = min(avg_requests_per_day / 100 * 100, 100)
+                
+                # TIERS:
+                # - high: score > 70
+                # - medium: 40 ≤ score ≤ 70
+                # - low: score < 40
+                
+                # ANALYSIS REQUIREMENTS:
+                # - Calculate engagement score for each tenant
+                # - Categorize into tiers
+                # - Calculate platform benchmarks from all scores
+                # - Count distribution (high/medium/low)
+                # - Calculate tier breakdown (basic/premium)
+                # - Compare each tenant to benchmarks
+                # - Generate percentile rankings
+
+                # "Response JSON": Return ONLY a JSON object in this exact format.
+                # {
+                #   "analysis_type": "user_engagement",
+                #   "timestamp": "ISO 8601 string",
+                #   "summary": {
+                #     "platform_benchmark": {
+                #       "mean_engagement_score": number,
+                #       "median_engagement_score": number
+                #     }
+                #   },
+                #   "tenant_analysis": [
+                #     {
+                #       "tenant_id": "string",
+                #       "tenant_name": "string",
+                #       "tier": "string",
+                #       "engagement_score": number,
+                #       "performance_vs_platform": "above_average|below_average|average|no_activity",
+                #       "percentile_rank": number,
+                #       "comparison_to_mean": "string",
+                #       "comparison_to_tier": "string",
+                #       "status": "active|no_activity",
+                #       "metrics": {
+                #         "total_requests": number,
+                #         "unique_users": number,
+                #         "unique_days_active": number,
+                #         "activity_frequency": number,
+                #         "feature_diversity": number,
+                #         "avg_requests_per_day": number,
+                #         "features_list": ["string"]
+                #       },
+                #       "insights": ["string"]
+                #     }
+                #   ],
+                #   "tier_breakdown": {
+                #     "basic": {"count": number, "mean_engagement": number, "median_engagement": number},
+                #     "premium": {"count": number, "mean_engagement": number, "median_engagement": number}
+                #   },
+                #   "recommendations": [
+                #     {
+                #       "priority": "critical|high|medium|low",
+                #       "action": "string",
+                #       "rationale": "string"
+                #     }
+                #   ]
+                # }
+                # '''
             }
         
         elif analysis_type == 'at_risk':
@@ -1029,8 +1237,44 @@ class UsageInsightsService:
             return {
                 'action': 'identify_at_risk_features',
                 **base_input,
-                'analysis_period_days': analysis_period_days,
-                'instructions': 'Strictly respond in a valid JSON output format specified in system prompt'
+                'analysis_period_days': analysis_period_days
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+            #     ,'instructions': '''AT-RISK FEATURES ANALYSIS
+
+            #     CLASSIFICATION:
+            #     - AT-RISK: decline_rate < -25% OR adoption_rate < 15%
+            #     - CRITICAL: both conditions met
+            #     - MODERATE: one condition met
+                
+            #     ANALYSIS REQUIREMENTS:
+            #     - Calculate decline_rate and adoption_rate
+            #     - Analyze monthly breakdown for trend patterns
+            #     - Identify specific months with steepest decline
+            #     - Rank by severity
+            #     - DO NOT return any feature analysis raw data
+
+            #     "Response JSON": Return ONLY a JSON object in this exact format.
+            #     {
+            #       "analysis_type": "at_risk_features",
+            #       "timestamp": "ISO 8601 string",
+            #       "summary": {
+            #         "total_features_analyzed": number,
+            #         "at_risk_features_count": number,
+            #         "critical_risk_count": number,
+            #         "moderate_risk_count": number
+            #       },
+            #       "recommendations": [
+            #         {
+            #           "feature_name": "string",
+            #           "priority": "critical|high|medium|low",
+            #           "action": "string",
+            #           "rationale": "string",
+            #           "expected_impact": "string",
+            #           "timeline": "string"
+            #         }
+            #       ]
+            #     }
+            #    '''
             }
         
         else:
