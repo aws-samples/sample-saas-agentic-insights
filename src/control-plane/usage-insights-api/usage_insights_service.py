@@ -954,7 +954,7 @@ class UsageInsightsService:
             )
             
             # Process streaming response
-            agent_response = self._process_agent_response(response)
+            agent_response = self._process_agent_response(response, session_id, agent_input)
             
             logger.info(f"=== AGENT RESPONSE START ===")
             logger.info(f"Response keys: {list(agent_response.keys()) if isinstance(agent_response, dict) else 'Not a dict'}")
@@ -982,315 +982,364 @@ class UsageInsightsService:
         
         # Base input with DynamoDB table names for agent to query
         base_input = {
+            'special_instruction': "IMPORTANT: Respond ONLY valid JSON Format as per instructions. Also make sure you MUST respond within 10 seconds",
             'tenant_id': request_data['tenant_id'],
             'date_range': request_data['date_range'],
             'user_role': request_data['user_role'],
             'scope': request_data['scope'],
-            'data_filter': request_data.get('data_filter', {}),
-            'metrics_table_name': self.metrics_table_name,
-            'tenants_table_name': self.tenants_table_name
+            'data_filter': request_data.get('data_filter', {})
         }
         
         if analysis_type == 'ttv':
             return {
-                'action': 'calculate_time_to_value',
-                **base_input
+                'action': 'calculate_time_to_value'
                 # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
-                # ,'instructions': '''TIME TO VALUE (TTV) ANALYSIS
+                ,'instructions': '''TIME TO VALUE (TTV) ANALYSIS
 
-                # ANALYSIS REQUIREMENTS:
-                # - Compare each tenant's TTV vs platform benchmarks
-                # - Identify best/worst performers
-                # - Segment by tier
-                # - Flag tenants with no interaction
-                # - Calculate standard deviations from mean
-                # - Use percentile rankings
+                ANALYSIS REQUIREMENTS:
+                - Compare each tenant's TTV vs platform benchmarks
+                - Identify best/worst performers
+                - Segment by tier
+                - Flag tenants with no interaction
+                - Calculate standard deviations from mean
+                - Use percentile rankings
 
-                # "Response JSON": Return ONLY a JSON object in this exact format.
-                # {
-                #   "analysis_type": "time_to_value",
-                #   "timestamp": "ISO 8601 string",
-                #   "summary": {
-                #     "requested_tenant_id": "string",
-                #     "tenants_analyzed": number,
-                #     "platform_benchmark": {
-                #       "mean_ttv_days": number,
-                #       "median_ttv_days": number,
-                #       "percentile_25": number,
-                #       "percentile_75": number,
-                #       "percentile_90": number
-                #     }
-                #   },
-                #   "tenant_analysis": [
-                #     {
-                #       "tenant_id": "string",
-                #       "tenant_name": "string",
-                #       "tier": "string",
-                #       "ttv_days": number,
-                #       "performance_vs_platform": "above_average|below_average|average",
-                #       "percentile_rank": number,
-                #       "comparison_to_mean": "string",
-                #       "comparison_to_tier": "string",
-                #       "status": "string",
-                #       "insights": ["string"]
-                #     }
-                #   ],
-                #   "tier_breakdown": {
-                #     "basic": {"count": number, "mean_ttv": number, "median_ttv": number},
-                #     "premium": {"count": number, "mean_ttv": number, "median_ttv": number}
-                #   },
-                #   "key_findings": ["string"],
-                #   "recommendations": [
-                #     {
-                #       "priority": "critical|high|medium|low",
-                #       "target": "string",
-                #       "action": "string",
-                #       "rationale": "string",
-                #       "expected_impact": "string",
-                #       "timeline": "string"
-                #     }
-                #   ]
-                # }
-                # '''
+                "Response JSON": Return ONLY a JSON object in this exact format.
+                {
+                  "analysis_type": "time_to_value",
+                  "timestamp": "ISO 8601 string",
+                  "summary": {
+                    "requested_tenant_id": "string",
+                    "tenants_analyzed": number,
+                    "platform_benchmark": {
+                      "mean_ttv_days": number,
+                      "median_ttv_days": number,
+                      "percentile_25": number,
+                      "percentile_75": number,
+                      "percentile_90": number
+                    }
+                  },
+                  "tenant_analysis": [
+                    {
+                      "tenant_id": "string",
+                      "tenant_name": "string",
+                      "tier": "string",
+                      "ttv_days": number,
+                      "performance_vs_platform": "above_average|below_average|average",
+                      "percentile_rank": number,
+                      "comparison_to_mean": "string",
+                      "comparison_to_tier": "string",
+                      "status": "string",
+                      "insights": ["string"]
+                    }
+                  ],
+                  "tier_breakdown": {
+                    "basic": {"count": number, "mean_ttv": number, "median_ttv": number},
+                    "premium": {"count": number, "mean_ttv": number, "median_ttv": number}
+                  },
+                  "key_findings": ["string"],
+                  "recommendations": [
+                    {
+                      "priority": "critical|high|medium|low",
+                      "target": "string",
+                      "action": "string",
+                      "rationale": "string",
+                      "expected_impact": "string",
+                      "timeline": "string"
+                    }
+                  ]
+                }
+                '''
+                ,**base_input
+
             }
         
         elif analysis_type == 'cltv':
             projection_months = request_data.get('filters', {}).get('projection_months', 12)
             return {
-                'action': 'project_customer_lifetime_value',
+                'action': 'project_customer_lifetime_value'
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                ,'instructions': '''CUSTOMER LIFETIME VALUE (CLTV) ANALYSIS
+
+                CALCULATION APPROACH:
+                - Project revenue over 12-month horizon
+                - Use cohort analysis by tier and onboarding period
+                - Factor in historical retention metrics
+                - Calculate confidence intervals for projections
+                
+                ANALYSIS REQUIREMENTS:
+                - Calculate projected CLTV for each tenant
+                - Segment by tier (Basic vs Premium)
+                - Identify high-value customer segments
+                - Compare actual vs projected performance
+                - Rank tenants by CLTV potential
+                - Generate retention recommendations
+                - Ensure insights and recommendations are not more than 3, and within 10 tokens each
+               
+                "Response JSON": Return ONLY a JSON object in this exact format.
+                {
+                  "analysis_type": "customer_lifetime_value",
+                  "timestamp": "ISO 8601 string",
+                  "tenant_id": "string",
+                  "data": {
+                    "tenant_projections": [
+                      {
+                        "tenant_name": "string",
+                        "tier": "basic|premium|enterprise|unknown",
+                        "retention_rate": number,
+                        "projected_cltv_12m": number,
+                        "segment": "high_value|medium_value|at_risk"
+                      }
+                    ],
+                    "segments": {
+                      "high_value": {"count": number, "avg_cltv": number},
+                      "medium_value": {"count": number, "avg_cltv": number},
+                      "at_risk": {"count": number, "avg_cltv": number}
+                    }
+                  },
+                  "recommendations": [
+                    {
+                      "priority": "critical|high|medium|low",
+                      "action": "string",
+                      "rationale": "string"
+                    }
+                  ]
+                }
+                ''',
                 **base_input,
                 'projection_months': projection_months
-                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
-                # ,'instructions': '''CUSTOMER LIFETIME VALUE (CLTV) ANALYSIS
-
-                # CALCULATION APPROACH:
-                # - Project revenue over 12-month horizon
-                # - Use cohort analysis by tier and onboarding period
-                # - Factor in historical retention metrics
-                # - Calculate confidence intervals for projections
-                
-                # ANALYSIS REQUIREMENTS:
-                # - Calculate projected CLTV for each tenant
-                # - Segment by tier (Basic vs Premium)
-                # - Identify high-value customer segments
-                # - Compare actual vs projected performance
-                # - Rank tenants by CLTV potential
-                # - Generate retention recommendations
-                # - Ensure insights and recommendations are not more than 3, and within 10 tokens each
-               
-                # "Response JSON": Return ONLY a JSON object in this exact format.
-                # {
-                #   "analysis_type": "customer_lifetime_value",
-                #   "timestamp": "ISO 8601 string",
-                #   "tenant_id": "string",
-                #   "data": {
-                #     "tenant_projections": [
-                #       {
-                #         "tenant_name": "string",
-                #         "tier": "basic|premium|enterprise|unknown",
-                #         "retention_rate": number,
-                #         "projected_cltv_12m": number,
-                #         "segment": "high_value|medium_value|at_risk"
-                #       }
-                #     ],
-                #     "segments": {
-                #       "high_value": {"count": number, "avg_cltv": number},
-                #       "medium_value": {"count": number, "avg_cltv": number},
-                #       "at_risk": {"count": number, "avg_cltv": number}
-                #     }
-                #   },
-                #   "recommendations": [
-                #     {
-                #       "priority": "critical|high|medium|low",
-                #       "action": "string",
-                #       "rationale": "string"
-                #     }
-                #   ]
-                # }
-                # '''
             }
         
         elif analysis_type == 'feature_adoption':
             time_period_days = request_data.get('filters', {}).get('time_period_days', 30)
             return {
-                'action': 'analyze_feature_adoption_rates',
+                'action': 'analyze_feature_adoption_rates'
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                ,'instructions': '''FEATURE ADOPTION ANALYSIS
+                
+                FEATURE ADOPTION RATE CALCULATION:
+                - adoption_rate = (unique_users_using_feature / total_active_users) * 100
+                - Segment by tier (Basic vs Premium)
+                - Compare adoption across features
+                
+                ANALYSIS REQUIREMENTS:
+                - Calculate adoption rate for each feature
+                - Identify features with highest and lowest adoption
+                - Compare adoption between Basic and Premium tiers
+                - Analyze adoption trends over time
+                - Identify correlation between feature adoption and tenant success
+                - Generate recommendations for improving adoption
+
+                "Response JSON": Return ONLY a JSON object in this exact format.
+                {
+                  "analysis_type": "feature_adoption",
+                  "timestamp": "ISO 8601 string",
+                  "tenant_id": "string",
+                  "data": {
+                    "features": [
+                      {
+                        "feature_name": "string",
+                        "adoption_rate": number,
+                        "feature_users": number,
+                        "active_users": number
+                      }
+                    ]
+                  },
+                  "recommendations": [
+                    {
+                      "priority": "critical|high|medium|low",
+                      "action": "string",
+                      "rationale": "string"
+                    }
+                  ]
+                }
+                ''',
                 **base_input,
                 'time_period_days': time_period_days
-                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
-                # ,'instructions': '''FEATURE ADOPTION ANALYSIS
-                
-                # FEATURE ADOPTION RATE CALCULATION:
-                # - adoption_rate = (unique_users_using_feature / total_active_users) * 100
-                # - Segment by tier (Basic vs Premium)
-                # - Compare adoption across features
-                
-                # ANALYSIS REQUIREMENTS:
-                # - Calculate adoption rate for each feature
-                # - Identify features with highest and lowest adoption
-                # - Compare adoption between Basic and Premium tiers
-                # - Analyze adoption trends over time
-                # - Identify correlation between feature adoption and tenant success
-                # - Generate recommendations for improving adoption
-
-                # "Response JSON": Return ONLY a JSON object in this exact format.
-                # {
-                #   "analysis_type": "feature_adoption",
-                #   "timestamp": "ISO 8601 string",
-                #   "tenant_id": "string",
-                #   "data": {
-                #     "features": [
-                #       {
-                #         "feature_name": "string",
-                #         "adoption_rate": number,
-                #         "feature_users": number,
-                #         "active_users": number
-                #       }
-                #     ]
-                #   },
-                #   "recommendations": [
-                #     {
-                #       "priority": "critical|high|medium|low",
-                #       "action": "string",
-                #       "rationale": "string"
-                #     }
-                #   ]
-                # }
-                # '''
             }
         
         elif analysis_type == 'engagement':
             return {
-                'action': 'calculate_engagement_scores',
+                'action': 'calculate_engagement_scores'
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                ,'instructions': '''USER ENGAGEMENT ANALYSIS
+               
+                SCORING FORMULA:
+                engagement_score = (activity_frequency * 0.40) + (feature_diversity * 0.40) + (request_volume_score * 0.20)
+                where request_volume_score = min(avg_requests_per_day / 100 * 100, 100)
+                
+                TIERS:
+                - high: score > 70
+                - medium: 40 ≤ score ≤ 70
+                - low: score < 40
+                
+                ANALYSIS REQUIREMENTS:
+                - Calculate engagement score for each tenant
+                - Calculate platform benchmarks from all scores
+                - Compare each tenant to benchmarks
+                - Generate percentile rankings
+
+                "Response JSON": Return ONLY a JSON object in this exact format.
+                {
+                  "analysis_type": "user_engagement",
+                  "timestamp": "ISO 8601 string",
+                  "summary": {
+                    "platform_benchmark": {
+                      "mean_engagement_score": number,
+                      "median_engagement_score": number
+                    }
+                  },
+                  "tenant_analysis": [
+                    {
+                      "tenant_id": "string",
+                      "tenant_name": "string",
+                      "tier": "string",
+                      "engagement_score": number,
+                      "performance_vs_platform": "above_average|below_average|average|no_activity",
+                      "percentile_rank": number,
+                      "comparison_to_mean": "string",
+                      "comparison_to_tier": "string",
+                      "status": "active|no_activity",
+                      "metrics": {
+                        "total_requests": number,
+                        "unique_users": number,
+                        "unique_days_active": number,
+                        "activity_frequency": number,
+                        "feature_diversity": number,
+                        "avg_requests_per_day": number,
+                        "features_list": ["string"]
+                      },
+                      "insights": ["string"]
+                    }
+                  ],
+                  "recommendations": [
+                    {
+                      "priority": "critical|high|medium|low",
+                      "action": "string",
+                      "rationale": "string"
+                    }
+                  ]
+                }
+                ''',
                 **base_input,
                 'user_id': request_data.get('user_id')
-                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
-                # ,'instructions': '''USER ENGAGEMENT ANALYSIS
-               
-                # SCORING FORMULA:
-                # engagement_score = (activity_frequency * 0.40) + (feature_diversity * 0.40) + (request_volume_score * 0.20)
-                # where request_volume_score = min(avg_requests_per_day / 100 * 100, 100)
-                
-                # TIERS:
-                # - high: score > 70
-                # - medium: 40 ≤ score ≤ 70
-                # - low: score < 40
-                
-                # ANALYSIS REQUIREMENTS:
-                # - Calculate engagement score for each tenant
-                # - Categorize into tiers
-                # - Calculate platform benchmarks from all scores
-                # - Count distribution (high/medium/low)
-                # - Calculate tier breakdown (basic/premium)
-                # - Compare each tenant to benchmarks
-                # - Generate percentile rankings
-
-                # "Response JSON": Return ONLY a JSON object in this exact format.
-                # {
-                #   "analysis_type": "user_engagement",
-                #   "timestamp": "ISO 8601 string",
-                #   "summary": {
-                #     "platform_benchmark": {
-                #       "mean_engagement_score": number,
-                #       "median_engagement_score": number
-                #     }
-                #   },
-                #   "tenant_analysis": [
-                #     {
-                #       "tenant_id": "string",
-                #       "tenant_name": "string",
-                #       "tier": "string",
-                #       "engagement_score": number,
-                #       "performance_vs_platform": "above_average|below_average|average|no_activity",
-                #       "percentile_rank": number,
-                #       "comparison_to_mean": "string",
-                #       "comparison_to_tier": "string",
-                #       "status": "active|no_activity",
-                #       "metrics": {
-                #         "total_requests": number,
-                #         "unique_users": number,
-                #         "unique_days_active": number,
-                #         "activity_frequency": number,
-                #         "feature_diversity": number,
-                #         "avg_requests_per_day": number,
-                #         "features_list": ["string"]
-                #       },
-                #       "insights": ["string"]
-                #     }
-                #   ],
-                #   "tier_breakdown": {
-                #     "basic": {"count": number, "mean_engagement": number, "median_engagement": number},
-                #     "premium": {"count": number, "mean_engagement": number, "median_engagement": number}
-                #   },
-                #   "recommendations": [
-                #     {
-                #       "priority": "critical|high|medium|low",
-                #       "action": "string",
-                #       "rationale": "string"
-                #     }
-                #   ]
-                # }
-                # '''
             }
         
         elif analysis_type == 'at_risk':
             analysis_period_days = request_data.get('filters', {}).get('analysis_period_days', 120)
             return {
-                'action': 'identify_at_risk_features',
+                'action': 'identify_at_risk_features'
+                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
+                ,'instructions': '''AT-RISK FEATURES ANALYSIS
+
+                CLASSIFICATION:
+                - AT-RISK: decline_rate < -25% OR adoption_rate < 15%
+                - CRITICAL: both conditions met
+                - MODERATE: one condition met
+                
+                ANALYSIS REQUIREMENTS:
+                - Calculate decline_rate and adoption_rate
+                - Analyze monthly breakdown for trend patterns
+                - Identify specific months with steepest decline
+                - Rank by severity
+                - DO NOT return any feature analysis raw data
+
+                "Response JSON": Return ONLY a JSON object in this exact format.
+                {
+                  "analysis_type": "at_risk_features",
+                  "timestamp": "ISO 8601 string",
+                  "summary": {
+                    "total_features_analyzed": number,
+                    "at_risk_features_count": number,
+                    "critical_risk_count": number,
+                    "moderate_risk_count": number
+                  },
+                  "recommendations": [
+                    {
+                      "feature_name": "string",
+                      "priority": "critical|high|medium|low",
+                      "action": "string",
+                      "rationale": "string",
+                      "expected_impact": "string",
+                      "timeline": "string"
+                    }
+                  ]
+                }
+               ''',
                 **base_input,
                 'analysis_period_days': analysis_period_days
-                # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
-            #     ,'instructions': '''AT-RISK FEATURES ANALYSIS
-
-            #     CLASSIFICATION:
-            #     - AT-RISK: decline_rate < -25% OR adoption_rate < 15%
-            #     - CRITICAL: both conditions met
-            #     - MODERATE: one condition met
-                
-            #     ANALYSIS REQUIREMENTS:
-            #     - Calculate decline_rate and adoption_rate
-            #     - Analyze monthly breakdown for trend patterns
-            #     - Identify specific months with steepest decline
-            #     - Rank by severity
-            #     - DO NOT return any feature analysis raw data
-
-            #     "Response JSON": Return ONLY a JSON object in this exact format.
-            #     {
-            #       "analysis_type": "at_risk_features",
-            #       "timestamp": "ISO 8601 string",
-            #       "summary": {
-            #         "total_features_analyzed": number,
-            #         "at_risk_features_count": number,
-            #         "critical_risk_count": number,
-            #         "moderate_risk_count": number
-            #       },
-            #       "recommendations": [
-            #         {
-            #           "feature_name": "string",
-            #           "priority": "critical|high|medium|low",
-            #           "action": "string",
-            #           "rationale": "string",
-            #           "expected_impact": "string",
-            #           "timeline": "string"
-            #         }
-            #       ]
-            #     }
-            #    '''
             }
         
         else:
             raise ValidationError(f"Unsupported analysis type: {analysis_type}")
     
-    def _process_agent_response(self, response) -> Dict[str, Any]:
+    def _retry_agent_with_json_instruction(
+        self, session_id: str, agent_input: Dict[str, Any], retry_count: int
+    ) -> Dict[str, Any]:
         """
-        Process streaming response from Bedrock agent
+        Retry agent invocation with special JSON formatting instructions
+        
+        Args:
+            session_id: Session ID to maintain conversation context
+            agent_input: Original agent input
+            retry_count: Current retry attempt count
+        
+        Returns:
+            Processed response from retry attempt
+        
+        Raises:
+            BedrockAgentError: If retry fails
+        """
+        logger.warning(
+            f"Retrying agent invocation with JSON format instructions (attempt {retry_count + 1}/1)"
+        )
+        
+        # Add special instruction to return JSON without invoking tools
+        retry_input = {}
+        retry_input['special_instruction'] = (
+            "IMPORTANT: Your previous response could not be parsed as JSON. "
+            "Please respond with ONLY valid JSON in the previously specified format. "
+            "Do NOT invoke any tools. Do NOT include any text outside the JSON object. "
+            "Do NOT wrap the response in markdown code blocks."
+        )
+        
+        # Invoke agent again with same session
+        logger.info(f"=== RETRY AGENT REQUEST START ===")
+        logger.info(f"Session ID: {session_id}")
+        logger.info(f"Retry Input: {json.dumps(retry_input, indent=2, default=str)}")
+        logger.info(f"=== RETRY AGENT REQUEST END ===")
+        
+        retry_response = self.strands_client.invoke_agent(
+            input_text=json.dumps(retry_input), session_id=session_id
+        )
+        
+        # Process retry response recursively with incremented retry count
+        return self._process_agent_response(
+            retry_response, session_id, agent_input, retry_count + 1
+        )
+
+    def _process_agent_response(
+        self,
+        response,
+        session_id: str = None,
+        agent_input: Dict[str, Any] = None,
+        retry_count: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        Process streaming response from Bedrock agent with retry logic for JSON decode errors
         
         Args:
             response: Bedrock agent response stream
+            session_id: Session ID for retry attempts
+            agent_input: Original agent input for retry attempts
+            retry_count: Current retry attempt count
         
         Returns:
             Processed response data
         """
         completion = ""
+        chunk_count = 0
+        json_format_detected = None
         
         try:
             # Process streaming response - Bedrock returns EventStream
@@ -1304,13 +1353,51 @@ class UsageInsightsService:
                         if 'bytes' in chunk:
                             chunk_text = chunk['bytes'].decode('utf-8')
                             completion += chunk_text
+                            chunk_count += 1
+                            
+                            # Early detection: Check if response starts as JSON in first 2 chunks
+                            if chunk_count <= 2 and json_format_detected is None:
+                                stripped_completion = completion.strip()
+                                
+                                # Check for JSON start patterns
+                                if stripped_completion.startswith('{'):
+                                    json_format_detected = True
+                                    logger.info(
+                                        f"✓ JSON format detected at chunk {chunk_count} - "
+                                        f"Response starts with '{{'"
+                                    )
+                                elif stripped_completion.startswith('```json'):
+                                    json_format_detected = True
+                                    logger.info(
+                                        f"✓ JSON format detected at chunk {chunk_count} - "
+                                        f"Response starts with markdown JSON block"
+                                    )
+                                elif len(stripped_completion) > 10:
+                                    # If we have enough content and it doesn't start with JSON
+                                    json_format_detected = False
+                                    logger.warning(
+                                        f"✗ Non-JSON format detected at chunk {chunk_count} - "
+                                        f"Response starts with: '{stripped_completion[:50]}...'"
+                                    )
+                                    
+                                    # Early retry if non-JSON detected and this is first attempt
+                                    if retry_count == 0 and session_id and agent_input:
+                                        logger.warning(
+                                            "Triggering early retry due to non-JSON format detection"
+                                        )
+                                        # Stop processing current stream and retry immediately
+                                        return self._retry_agent_with_json_instruction(
+                                            session_id, agent_input, retry_count
+                                        )
                     
                     elif 'trace' in event:
                         # Log trace events for debugging
                         trace = event['trace']
                         if isinstance(trace, dict) and 'orchestrationTrace' in trace:
                             orch_trace = trace['orchestrationTrace']
-                            logger.debug(f"Orchestration trace: {json.dumps(orch_trace, indent=2, default=str)}")
+                            logger.debug(
+                                f"Orchestration trace: {json.dumps(orch_trace, indent=2, default=str)}"
+                            )
             
             # Check if completion is empty
             if not completion or len(completion.strip()) == 0:
@@ -1334,20 +1421,25 @@ class UsageInsightsService:
                 logger.info("Successfully parsed agent response as JSON")
             except json.JSONDecodeError as e:
                 logger.error(f"JSON decode error: {str(e)}")
-                # If response is not JSON, treat as text analysis
-                parsed_response = {
-                    'analysis_type': 'unknown',
-                    'timestamp': datetime.now().isoformat(),
-                    'data': {},
-                    'recommendations': []
-                }
+                
+                # Retry once with special instructions if this is the first attempt
+                if retry_count == 0 and session_id and agent_input:
+                    return self._retry_agent_with_json_instruction(
+                        session_id, agent_input, retry_count
+                    )
+                
+                # If retry failed or this was already a retry, raise error
+                logger.error(f"Failed to parse JSON after {retry_count + 1} attempt(s)")
+                raise BedrockAgentError(f"Agent response is not valid JSON: {str(e)}")
             
             return parsed_response
             
         except BedrockAgentError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error processing agent response: {str(e)}", exc_info=True)
+            logger.error(
+                f"Unexpected error processing agent response: {str(e)}", exc_info=True
+            )
             raise BedrockAgentError(f"Error processing agent response: {str(e)}")
     
     def _extract_ai_insights(self, agent_response: Dict[str, Any]) -> List[Dict[str, Any]]:
