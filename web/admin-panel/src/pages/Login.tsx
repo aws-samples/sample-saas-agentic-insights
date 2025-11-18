@@ -22,7 +22,9 @@ export default function Login() {
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('adminToken', data.tokens.access_token);
+        localStorage.setItem('adminToken', data.tokens.id_token);
+        localStorage.setItem('adminAccessToken', data.tokens.access_token);
+        localStorage.setItem('adminRefreshToken', data.tokens.refresh_token);
         navigate('/churn-analysis');
       } else {
         const errorData = await response.json();

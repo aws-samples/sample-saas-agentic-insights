@@ -31,10 +31,10 @@ export default function ChurnAnalysis() {
         import.meta.env.VITE_CHURN_AGENT_ARN
       )}/invocations?qualifier=DEFAULT`,
       // api: "http://localhost:8080/invocations",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("adminToken") || ""}`,
+      headers: () => ({
+        Authorization: `Bearer ${localStorage.getItem("adminAccessToken") || ""}`,
         "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": crypto.randomUUID(),
-      },
+      }),
     }),
   });
 
@@ -132,8 +132,17 @@ export default function ChurnAnalysis() {
             status === "ready"
               ? "default"
               : status === "streaming"
-              ? "secondary"
+              ? "outline"
+              : status === "submitted"
+              ? "outline"
               : "destructive"
+          }
+          className={
+            status === "submitted"
+              ? "bg-blue-500 text-white border-blue-600"
+              : status === "streaming"
+              ? "bg-green-500 text-white border-green-600"
+              : ""
           }
         >
           {status}
