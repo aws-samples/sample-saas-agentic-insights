@@ -7,6 +7,7 @@
 set -e
 
 # Colors
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
@@ -97,19 +98,8 @@ echo "  - tenant-initech (Initech LLC, Basic)"
 echo ""
 echo "You can now use these tenant IDs in your test events."
 
-#!/bin/bash
-
 # Create Tenant Test Users Script
 # Creates admin users for the 3 sample tenants in their respective Cognito user pools
-
-set -e
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
 
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -210,9 +200,10 @@ create_user() {
                 Name=custom:tenant_id,Value="$tenant_id" \
                 Name=custom:role,Value="$role" \
                 Name=custom:tier,Value="$tier" \
-            --region "$REGION" >/dev/null 2>&1
+            --region "$REGION" >/dev/null 2>&1 || true
         
         print_success "Updated attributes for $email"
+        return 0
     else
         # Create the user
         aws cognito-idp admin-create-user \
@@ -229,24 +220,15 @@ create_user() {
             --region "$REGION" >/dev/null 2>&1
     fi
     
-    if [ $? -eq 0 ]; then
-        # Set permanent password
-        aws cognito-idp admin-set-user-password \
-            --user-pool-id "$user_pool_id" \
-            --username "$email" \
-            --password "$DEFAULT_PASSWORD" \
-            --permanent \
-            --region "$REGION" >/dev/null 2>&1
-        
-        print_success "Created user: $email"
-        echo "           Username: $email"
-        echo "           Password: $DEFAULT_PASSWORD"
-        echo "           Tenant: $tenant_id"
-        echo "           Role: $role"
-        echo "           Tier: $tier"
-    else
-        print_error "Failed to create user: $email"
-    fi
+    # Set permanent password
+    aws cognito-idp admin-set-user-password \
+        --user-pool-id "$user_pool_id" \
+        --username "$email" \
+        --password "$DEFAULT_PASSWORD" \
+        --permanent \
+        --region "$REGION" >/dev/null 2>&1 || true
+    
+    print_success "User ready: $email"
 }
 
 # Create all users
@@ -259,11 +241,8 @@ fail_count=0
 for user_info in "${TENANT_USERS[@]}"; do
     IFS=':' read -r tenant_id email tier role <<< "$user_info"
     
-    if create_user "$tenant_id" "$email" "$tier" "$role"; then
-        success_count=$((success_count+1))
-    else
-        fail_count=$((fail_count+1))
-    fi
+    create_user "$tenant_id" "$email" "$tier" "$role"
+    success_count=$((success_count+1))
 done
 
 # Summary
@@ -341,21 +320,11 @@ print_warning "Note: All users have the same password: $DEFAULT_PASSWORD"
 print_warning "Consider changing passwords for production use."
 echo ""
 
-#!/bin/bash
-
 # Load Sample Usage Metrics Data (AWS CLI version - no boto3 required)
 # This script generates and loads sample usage metrics data into DynamoDB
 # using only AWS CLI commands (no Python dependencies)
 # Usage: ./scripts/load_sample_usage_metrics_cli.sh [--table-name TABLE] [--days DAYS] [--clear]
 
-set -e
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
 
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"

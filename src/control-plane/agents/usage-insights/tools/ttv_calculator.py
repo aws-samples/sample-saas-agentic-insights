@@ -193,7 +193,9 @@ def get_all_tenants(tenants_table, date_range: Optional[Dict] = None) -> List[Di
         return tenants
         
     except Exception as e:
+        import traceback
         print(f"Error retrieving tenants: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         return []
 
 
@@ -395,13 +397,14 @@ def find_first_interaction_optimized(metrics_table, tenant_id: str, onboarding_d
         # Calculate search window (up to 12 months after onboarding)
         end_date = min(utcnow(), onboarding_date + timedelta(days=365))
         
-        # CRITICAL FIX: Ensure consistent ISO format with 'Z' suffix for proper string comparison
-        # DynamoDB stores timestamps as strings, so we need exact format matching
-        onboarding_iso = onboarding_date.isoformat()
+        # CRITICAL FIX: Convert datetime to ISO string with 'Z' suffix for DynamoDB string comparison
+        # Replace '+00:00' timezone with 'Z' to match DynamoDB storage format
+        onboarding_iso = onboarding_date.isoformat().replace('+00:00', 'Z')
         if not onboarding_iso.endswith('Z'):
+            # Handle timezone-naive datetime
             onboarding_iso = onboarding_iso + 'Z'
         
-        end_iso = end_date.isoformat()
+        end_iso = end_date.isoformat().replace('+00:00', 'Z')
         if not end_iso.endswith('Z'):
             end_iso = end_iso + 'Z'
         

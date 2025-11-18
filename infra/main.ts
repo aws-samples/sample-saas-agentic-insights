@@ -46,6 +46,8 @@ const appPlaneStack = new AppPlaneStack(app, "AgenticInsightsAppPlane", {
   // Pass metrics collector layer for application services
   metricsCollectorLayer: metricsFrameworkStack.metricsCollectorLayer,
   metricsEventBusName: controlPlaneStack.eventBus.eventBusName,
+  // Pass Control Plane API URL for admin panel configuration
+  controlPlaneApiUrl: controlPlaneStack.controlPlaneApi.url,
 });
 
 // Cost Analysis Agent Stack - handles cost analysis with tables from metrics framework

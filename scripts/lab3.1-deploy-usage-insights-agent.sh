@@ -64,10 +64,13 @@ main() {
     # Step 5: Wait for agent preparation
     wait_for_agent_preparation
     
-    # Step 6: Verify deployment
+    # Step 6: Update InsightDashboardApi Lambda environment variables
+    update_insight_dashboard_lambda_env
+    
+    # Step 7: Verify deployment
     verify_deployment
     
-    # Step 7: Display results
+    # Step 8: Display results
     display_results
 }
 
@@ -399,6 +402,34 @@ deploy_bedrock_agent_legacy() {
     
     # Navigate back to project root
     cd ../../../../
+}
+
+update_insight_dashboard_lambda_env() {
+    print_status "Updating InsightDashboardApi Lambda environment variables..."
+    
+    local dashboard_function=$(aws lambda list-functions --output json | jq -r '.Functions[] | select(.FunctionName | contains("InsightDashboardApi")) | .FunctionName' | head -1)
+    
+    if [ -z "$dashboard_function" ]; then
+        print_warning "InsightDashboardApi Lambda not found, skipping"
+        return
+    fi
+    
+    local current_env=$(aws lambda get-function-configuration --function-name "$dashboard_function" --output json | jq -r '.Environment.Variables')
+    local cost_agent_id=$(echo "$current_env" | jq -r '.COST_ANALYSIS_AGENT_ID // ""')
+    local cost_agent_alias_id=$(echo "$current_env" | jq -r '.COST_ANALYSIS_AGENT_ALIAS_ID // ""')
+    
+    aws lambda update-function-configuration \
+        --function-name "$dashboard_function" \
+        --environment "Variables={USAGE_INSIGHTS_AGENT_ID=$BEDROCK_AGENT_ID,USAGE_INSIGHTS_AGENT_ALIAS_ID=$BEDROCK_AGENT_ALIAS_ID,COST_ANALYSIS_AGENT_ID=$cost_agent_id,COST_ANALYSIS_AGENT_ALIAS_ID=$cost_agent_alias_id,USAGE_METRICS_TABLE_NAME=$USAGE_METRICS_TABLE_NAME,TENANTS_TABLE_NAME=$TENANTS_TABLE_NAME}" \
+        --output json > /dev/null
+    
+    if [ $? -eq 0 ]; then
+        print_success "Lambda environment updated"
+        sleep 5
+    else
+        print_error "Failed to update Lambda environment"
+        exit 1
+    fi
 }
 
 deploy_cdk_stack() {

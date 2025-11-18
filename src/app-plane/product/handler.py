@@ -2,11 +2,13 @@ import json
 import boto3
 import uuid
 import os
+
 import logging
 import time
 from datetime import datetime
 from typing import Dict, Any
 from decimal import Decimal
+
 
 # Import metrics collector from Lambda Layer
 try:
@@ -32,6 +34,7 @@ cors_headers = {
 }
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+
     """Handle product management operations with metrics instrumentation"""
     
     start_time = time.time()
@@ -52,6 +55,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         request_context = event.get('requestContext', {})
         authorizer_context = request_context.get('authorizer', {})
         tenant_id = authorizer_context.get('tenant_id')
+
         tier = authorizer_context.get('tier')
         user_id = authorizer_context.get('user_id')
         user_role = authorizer_context.get('role', 'tenant_user')
@@ -76,6 +80,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if http_method == 'GET':
             product_id = path_parameters.get('product_id')
             if product_id:
+
                 result = get_product(tenant_id, product_id, metrics)
             else:
                 result = list_products(tenant_id, metrics)
@@ -86,6 +91,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'headers': cors_headers,
                     'body': json.dumps({'error': 'Only tenant admins can create products'})
                 }
+
             result = create_product(event, tenant_id, user_id, metrics)
         elif http_method == 'PUT':
             if user_role != 'tenant_admin':
@@ -101,6 +107,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'headers': cors_headers,
                     'body': json.dumps({'error': 'product_id is required'})
                 }
+
             result = update_product(event, tenant_id, product_id, metrics)
         elif http_method == 'DELETE':
             if user_role != 'tenant_admin':
@@ -116,6 +123,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'headers': cors_headers,
                     'body': json.dumps({'error': 'product_id is required'})
                 }
+
             result = delete_product(tenant_id, product_id, metrics)
         else:
             logger.warning(f"Method not allowed: {http_method}")
@@ -124,6 +132,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'headers': cors_headers,
                 'body': json.dumps({'error': 'Method not allowed'})
             }
+
         
         # Track successful API request
         if metrics:
@@ -154,6 +163,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': cors_headers,
             'body': json.dumps({'error': 'Internal server error'})
         }
+
         # Track error response
         if metrics:
             execution_time = (time.time() - start_time) * 1000
@@ -181,6 +191,7 @@ def list_products(tenant_id: str, metrics=None) -> Dict[str, Any]:
             ExpressionAttributeValues={':tenant_id': tenant_id}
         )
         
+
         # Track DynamoDB operation
         if metrics:
             metrics.track_dynamodb_operation(
@@ -200,6 +211,7 @@ def list_products(tenant_id: str, metrics=None) -> Dict[str, Any]:
                 'created_by': item.get('created_by')
             })
         
+
         logger.info(json.dumps({
             "event": "list_products_completed",
             "tenant_id": tenant_id,
@@ -213,6 +225,7 @@ def list_products(tenant_id: str, metrics=None) -> Dict[str, Any]:
         }
         
     except Exception as e:
+
         logger.error(json.dumps({
             "event": "list_products_error",
             "tenant_id": tenant_id,
@@ -226,6 +239,7 @@ def list_products(tenant_id: str, metrics=None) -> Dict[str, Any]:
             'body': json.dumps({'error': 'Failed to list products'})
         }
 
+
 def get_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, Any]:
     """Get a specific product"""
     try:
@@ -234,6 +248,7 @@ def get_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, Any]
             Key={'tenant_id': tenant_id, 'product_id': product_id}
         )
         
+
         # Track DynamoDB operation
         if metrics:
             metrics.track_dynamodb_operation(
@@ -266,6 +281,7 @@ def get_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, Any]
         }
         
     except Exception as e:
+
         logger.error(json.dumps({
             "event": "get_product_error",
             "tenant_id": tenant_id,
@@ -278,6 +294,7 @@ def get_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, Any]
             'headers': cors_headers,
             'body': json.dumps({'error': 'Failed to get product'})
         }
+
 
 def create_product(event: Dict[str, Any], tenant_id: str, user_id: str, metrics=None) -> Dict[str, Any]:
     """Create a new product"""
@@ -323,6 +340,7 @@ def create_product(event: Dict[str, Any], tenant_id: str, user_id: str, metrics=
         
         table.put_item(Item=product_item)
         
+
         # Track DynamoDB operation
         if metrics:
             metrics.track_dynamodb_operation(
@@ -362,6 +380,7 @@ def create_product(event: Dict[str, Any], tenant_id: str, user_id: str, metrics=
             'body': json.dumps({'error': 'Invalid JSON in request body'})
         }
     except Exception as e:
+
         logger.error(json.dumps({
             "event": "create_product_error",
             "tenant_id": tenant_id,
@@ -373,6 +392,7 @@ def create_product(event: Dict[str, Any], tenant_id: str, user_id: str, metrics=
             'headers': cors_headers,
             'body': json.dumps({'error': 'Failed to create product'})
         }
+
 
 def update_product(event: Dict[str, Any], tenant_id: str, product_id: str, metrics=None) -> Dict[str, Any]:
     """Update an existing product"""
@@ -390,6 +410,7 @@ def update_product(event: Dict[str, Any], tenant_id: str, product_id: str, metri
                 'body': json.dumps({'error': 'Product not found'})
             }
         
+
         # Track initial read operation
         if metrics:
             metrics.track_dynamodb_operation(
@@ -444,6 +465,7 @@ def update_product(event: Dict[str, Any], tenant_id: str, product_id: str, metri
             ExpressionAttributeNames=expression_names if expression_names else None
         )
         
+
         # Track update operation
         if metrics:
             metrics.track_dynamodb_operation(
@@ -475,6 +497,7 @@ def update_product(event: Dict[str, Any], tenant_id: str, product_id: str, metri
             'body': json.dumps({'error': 'Invalid JSON in request body'})
         }
     except Exception as e:
+
         logger.error(json.dumps({
             "event": "update_product_error",
             "tenant_id": tenant_id,
@@ -487,6 +510,7 @@ def update_product(event: Dict[str, Any], tenant_id: str, product_id: str, metri
             'headers': cors_headers,
             'body': json.dumps({'error': 'Failed to update product'})
         }
+
 
 def delete_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, Any]:
     """Delete a product"""
@@ -502,6 +526,7 @@ def delete_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, A
                 'body': json.dumps({'error': 'Product not found'})
             }
         
+
         # Track initial read operation
         if metrics:
             metrics.track_dynamodb_operation(
@@ -538,6 +563,7 @@ def delete_product(tenant_id: str, product_id: str, metrics=None) -> Dict[str, A
         }
         
     except Exception as e:
+
         logger.error(json.dumps({
             "event": "delete_product_error",
             "tenant_id": tenant_id,
