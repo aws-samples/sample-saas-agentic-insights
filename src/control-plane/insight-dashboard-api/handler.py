@@ -81,7 +81,7 @@ def handler(event, context):
             #     "enable_advanced_insights": true
             # }
             # """
-            # ##============= END of SECTION 2 ================
+            # ##============= END of SECTION 3 ================
 
 
             # ##====== SECTION 4: AI RECOMMENDATIONS ============

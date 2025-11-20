@@ -167,29 +167,31 @@ export default function CostAnalysis() {
         </Button>
       </div>
 
-      {/* Main Sections - Always show */}
+      {/* Main Sections - Conditional rendering based on data availability */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Trend Analysis */}
         <Card className="p-6 bg-slate-800/50 border-slate-700">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-blue-400" />
-              <h2 className="text-xl font-semibold">Trend Analysis</h2>
-            </div>
-            <div className="text-center text-sm text-slate-300 mb-1 mt-1">Historical Cost per Tenant Trends</div>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={historicalChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="month" stroke="#9CA3AF" label={{ value: 'Time (Month)', position: 'insideBottom', offset: -5 }} />
-                <YAxis stroke="#9CA3AF" label={{ value: 'Cost per Tenant ($)', angle: -90, position: 'insideLeft' }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                  labelStyle={{ color: '#F3F4F6' }}
-                />
-                <Legend verticalAlign="top" height={36} />
-                <Line type="monotone" dataKey="basic_cost" stroke="#3B82F6" name="Basic Cost" strokeWidth={2} connectNulls />
-                <Line type="monotone" dataKey="premium_cost" stroke="#8B5CF6" name="Premium Cost" strokeWidth={2} connectNulls />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-5 h-5 text-blue-400" />
+            <h2 className="text-xl font-semibold">Trend Analysis</h2>
+          </div>
+          <div className="text-center text-sm text-slate-300 mb-1 mt-1">Historical Cost per Tenant Trends</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={historicalChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="month" stroke="#9CA3AF" label={{ value: 'Time (Month)', position: 'insideBottom', offset: -5 }} />
+              <YAxis stroke="#9CA3AF" label={{ value: 'Cost per Tenant ($)', angle: -90, position: 'insideLeft' }} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                labelStyle={{ color: '#F3F4F6' }}
+              />
+              <Legend verticalAlign="top" height={36} />
+              <Line type="monotone" dataKey="basic_cost" stroke="#3B82F6" name="Basic Cost" strokeWidth={2} connectNulls />
+              <Line type="monotone" dataKey="premium_cost" stroke="#8B5CF6" name="Premium Cost" strokeWidth={2} connectNulls />
+            </LineChart>
+          </ResponsiveContainer>
+          {/* Only show trends text when sufficient data */}
+          {data.cost_per_tenant_averages.length > 3 && (
             <div className="mt-4 space-y-2">
               {data.trends.map((trend, i) => (
                 <div key={i} className="p-3 bg-slate-700/30 rounded-lg text-sm text-slate-200">
@@ -197,7 +199,8 @@ export default function CostAnalysis() {
                 </div>
               ))}
             </div>
-          </Card>
+          )}
+        </Card>
 
           {/* AI Predictions */}
           {data.predictions.length > 0 && (
