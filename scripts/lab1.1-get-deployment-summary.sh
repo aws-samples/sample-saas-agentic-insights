@@ -37,12 +37,10 @@ echo "AWS Account: $AWS_ACCOUNT"
 echo "AWS Region: $AWS_REGION"
 echo
 echo "🔗 Application URLs:"
-if [ -n "$LANDING_PAGE_URL" ]; then
-    echo "Landing Page: $LANDING_PAGE_URL"
-fi
 if [ -n "$SAAS_APP_URL" ]; then
     echo "SaaS Application: $SAAS_APP_URL"
 fi
 if [ -n "$ADMIN_PANEL_URL" ]; then
     echo "Admin Panel: $ADMIN_PANEL_URL | Admin User : admin@example.com | Password : Admin123!"
 fi
+echo "----------------------"
