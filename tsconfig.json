@@ -19,5 +19,6 @@
     "strictPropertyInitialization": false,
     "typeRoots": ["./node_modules/@types"]
   },
-  "exclude": ["cdk.out", "web/churn-agent-ui"]
+  "include": ["infra/**/*", "src/**/*"],
+  "exclude": ["cdk.out", "web", "node_modules"]
 }

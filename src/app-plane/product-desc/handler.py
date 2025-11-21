@@ -3,10 +3,12 @@ import boto3
 import os
 import time
 import re
+
 import logging
 from datetime import datetime
 from typing import Dict, Any
 from decimal import Decimal
+
 
 # Import metrics collector from Lambda Layer
 try:
@@ -65,6 +67,7 @@ CLAUDE_INPUT_TOKEN_PRICE = float(os.environ.get('CLAUDE_INPUT_TOKEN_PRICE', '0.0
 CLAUDE_OUTPUT_TOKEN_PRICE = float(os.environ.get('CLAUDE_OUTPUT_TOKEN_PRICE', '0.000015'))
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+
     """Handle AI product description generation requests with metrics instrumentation"""
     
     start_time = time.time()
@@ -87,6 +90,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         tier = authorizer_context.get('tier', 'basic')
         user_id = authorizer_context.get('user_id')
         
+
         # Initialize metrics collector
         metrics = None
         if METRICS_ENABLED and tenant_id and tier:
@@ -104,6 +108,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
         
         if http_method == 'POST':
+
             result = generate_description(event, tenant_id, tier, user_id, context, metrics)
         else:
             result = {
@@ -111,6 +116,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'headers': cors_headers,
                 'body': json.dumps({'error': 'Method not allowed', 'status': 'error'})
             }
+
         
         # Track Lambda execution metrics
         if metrics:
@@ -152,6 +158,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': cors_headers,
             'body': json.dumps({'error': 'Internal server error', 'status': 'error'})
         }
+
 
 def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_id: str, context: Any, metrics=None) -> Dict[str, Any]:
     """Generate AI product description using Bedrock agent with metrics tracking"""
@@ -239,6 +246,7 @@ def generate_description(event: Dict[str, Any], tenant_id: str, tier: str, user_
             response_time = time.time() - start_time
             usage_data = calculate_usage_and_cost(input_tokens, output_tokens, tenant_id, tier, response_time)
             
+
             # Track Bedrock invocation metrics
             if metrics:
                 metrics.track_bedrock_invocation(

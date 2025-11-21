@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-// import TenantManagement from './pages/TenantManagement';
-// import CostAnalysis from './pages/CostAnalysis';
+import TenantManagement from './pages/TenantManagement';
+import CostAnalysis from './pages/CostAnalysis';
+import UsageAnalysis from './pages/UsageAnalysis';
 import ChurnAnalysis from './pages/ChurnAnalysis';
 
 function App() {
@@ -33,9 +34,10 @@ function App() {
             <Layout />
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="/churn-analysis" replace />} />
-          {/* <Route path="tenants" element={<TenantManagement />} /> */}
-          {/* <Route path="cost-analysis" element={<CostAnalysis />} /> */}
+          <Route index element={<Navigate to="/tenants" replace />} />
+          <Route path="tenants" element={<TenantManagement />} />
+          <Route path="cost-analysis" element={<CostAnalysis />} />
+          <Route path="usage-analysis" element={<UsageAnalysis />} />
           <Route path="churn-analysis" element={<ChurnAnalysis />} />
         </Route>
       </Routes>

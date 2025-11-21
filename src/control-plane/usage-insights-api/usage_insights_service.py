@@ -954,7 +954,7 @@ class UsageInsightsService:
             )
             
             # Process streaming response
-            agent_response = self._process_agent_response(response)
+            agent_response = self._process_agent_response(response, session_id, agent_input)
             
             logger.info(f"=== AGENT RESPONSE START ===")
             logger.info(f"Response keys: {list(agent_response.keys()) if isinstance(agent_response, dict) else 'Not a dict'}")
@@ -982,19 +982,17 @@ class UsageInsightsService:
         
         # Base input with DynamoDB table names for agent to query
         base_input = {
+            'special_instruction': "IMPORTANT: Respond ONLY valid JSON Format as per instructions. Also make sure you MUST respond within 10 seconds",
             'tenant_id': request_data['tenant_id'],
             'date_range': request_data['date_range'],
             'user_role': request_data['user_role'],
             'scope': request_data['scope'],
-            'data_filter': request_data.get('data_filter', {}),
-            'metrics_table_name': self.metrics_table_name,
-            'tenants_table_name': self.tenants_table_name
+            'data_filter': request_data.get('data_filter', {})
         }
         
         if analysis_type == 'ttv':
             return {
-                'action': 'calculate_time_to_value',
-                **base_input
+                'action': 'calculate_time_to_value'
                 # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
                 # ,'instructions': '''TIME TO VALUE (TTV) ANALYSIS
 
@@ -1052,14 +1050,14 @@ class UsageInsightsService:
                 #   ]
                 # }
                 # '''
+                ,**base_input
+
             }
         
         elif analysis_type == 'cltv':
             projection_months = request_data.get('filters', {}).get('projection_months', 12)
             return {
-                'action': 'project_customer_lifetime_value',
-                **base_input,
-                'projection_months': projection_months
+                'action': 'project_customer_lifetime_value'
                 # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
                 # ,'instructions': '''CUSTOMER LIFETIME VALUE (CLTV) ANALYSIS
 
@@ -1108,14 +1106,14 @@ class UsageInsightsService:
                 #   ]
                 # }
                 # '''
+                ,**base_input,
+                'projection_months': projection_months
             }
         
         elif analysis_type == 'feature_adoption':
             time_period_days = request_data.get('filters', {}).get('time_period_days', 30)
             return {
-                'action': 'analyze_feature_adoption_rates',
-                **base_input,
-                'time_period_days': time_period_days
+                'action': 'analyze_feature_adoption_rates'
                 # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
                 # ,'instructions': '''FEATURE ADOPTION ANALYSIS
                 
@@ -1156,13 +1154,13 @@ class UsageInsightsService:
                 #   ]
                 # }
                 # '''
+                ,**base_input,
+                'time_period_days': time_period_days
             }
         
         elif analysis_type == 'engagement':
             return {
-                'action': 'calculate_engagement_scores',
-                **base_input,
-                'user_id': request_data.get('user_id')
+                'action': 'calculate_engagement_scores'
                 # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
                 # ,'instructions': '''USER ENGAGEMENT ANALYSIS
                
@@ -1177,10 +1175,7 @@ class UsageInsightsService:
                 
                 # ANALYSIS REQUIREMENTS:
                 # - Calculate engagement score for each tenant
-                # - Categorize into tiers
                 # - Calculate platform benchmarks from all scores
-                # - Count distribution (high/medium/low)
-                # - Calculate tier breakdown (basic/premium)
                 # - Compare each tenant to benchmarks
                 # - Generate percentile rankings
 
@@ -1217,10 +1212,6 @@ class UsageInsightsService:
                 #       "insights": ["string"]
                 #     }
                 #   ],
-                #   "tier_breakdown": {
-                #     "basic": {"count": number, "mean_engagement": number, "median_engagement": number},
-                #     "premium": {"count": number, "mean_engagement": number, "median_engagement": number}
-                #   },
                 #   "recommendations": [
                 #     {
                 #       "priority": "critical|high|medium|low",
@@ -1230,14 +1221,14 @@ class UsageInsightsService:
                 #   ]
                 # }
                 # '''
+                ,**base_input,
+                'user_id': request_data.get('user_id')
             }
         
         elif analysis_type == 'at_risk':
             analysis_period_days = request_data.get('filters', {}).get('analysis_period_days', 120)
             return {
-                'action': 'identify_at_risk_features',
-                **base_input,
-                'analysis_period_days': analysis_period_days
+                'action': 'identify_at_risk_features'
                 # TODO: Uncomment the 'instructions' key below to provide analysis requirements and JSON structure guidance to the agent
             #     ,'instructions': '''AT-RISK FEATURES ANALYSIS
 
@@ -1275,22 +1266,80 @@ class UsageInsightsService:
             #       ]
             #     }
             #    '''
+                ,**base_input,
+                'analysis_period_days': analysis_period_days
             }
         
         else:
             raise ValidationError(f"Unsupported analysis type: {analysis_type}")
     
-    def _process_agent_response(self, response) -> Dict[str, Any]:
+    def _retry_agent_with_json_instruction(
+        self, session_id: str, agent_input: Dict[str, Any], retry_count: int
+    ) -> Dict[str, Any]:
         """
-        Process streaming response from Bedrock agent
+        Retry agent invocation with special JSON formatting instructions
+        
+        Args:
+            session_id: Session ID to maintain conversation context
+            agent_input: Original agent input
+            retry_count: Current retry attempt count
+        
+        Returns:
+            Processed response from retry attempt
+        
+        Raises:
+            BedrockAgentError: If retry fails
+        """
+        logger.warning(
+            f"Retrying agent invocation with JSON format instructions (attempt {retry_count + 1}/1)"
+        )
+        
+        # Add special instruction to return JSON without invoking tools
+        retry_input = {}
+        retry_input['special_instruction'] = (
+            "IMPORTANT: Your previous response could not be parsed as JSON. "
+            "Please respond with ONLY valid JSON in the previously specified format. "
+            "Do NOT invoke any tools. Do NOT include any text outside the JSON object. "
+            "Do NOT wrap the response in markdown code blocks."
+        )
+        
+        # Invoke agent again with same session
+        logger.info(f"=== RETRY AGENT REQUEST START ===")
+        logger.info(f"Session ID: {session_id}")
+        logger.info(f"Retry Input: {json.dumps(retry_input, indent=2, default=str)}")
+        logger.info(f"=== RETRY AGENT REQUEST END ===")
+        
+        retry_response = self.strands_client.invoke_agent(
+            input_text=json.dumps(retry_input), session_id=session_id
+        )
+        
+        # Process retry response recursively with incremented retry count
+        return self._process_agent_response(
+            retry_response, session_id, agent_input, retry_count + 1
+        )
+
+    def _process_agent_response(
+        self,
+        response,
+        session_id: str = None,
+        agent_input: Dict[str, Any] = None,
+        retry_count: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        Process streaming response from Bedrock agent with retry logic for JSON decode errors
         
         Args:
             response: Bedrock agent response stream
+            session_id: Session ID for retry attempts
+            agent_input: Original agent input for retry attempts
+            retry_count: Current retry attempt count
         
         Returns:
             Processed response data
         """
         completion = ""
+        chunk_count = 0
+        json_format_detected = None
         
         try:
             # Process streaming response - Bedrock returns EventStream
@@ -1304,13 +1353,51 @@ class UsageInsightsService:
                         if 'bytes' in chunk:
                             chunk_text = chunk['bytes'].decode('utf-8')
                             completion += chunk_text
+                            chunk_count += 1
+                            
+                            # Early detection: Check if response starts as JSON in first 2 chunks
+                            if chunk_count <= 2 and json_format_detected is None:
+                                stripped_completion = completion.strip()
+                                
+                                # Check for JSON start patterns
+                                if stripped_completion.startswith('{'):
+                                    json_format_detected = True
+                                    logger.info(
+                                        f"✓ JSON format detected at chunk {chunk_count} - "
+                                        f"Response starts with '{{'"
+                                    )
+                                elif stripped_completion.startswith('```json'):
+                                    json_format_detected = True
+                                    logger.info(
+                                        f"✓ JSON format detected at chunk {chunk_count} - "
+                                        f"Response starts with markdown JSON block"
+                                    )
+                                elif len(stripped_completion) > 10:
+                                    # If we have enough content and it doesn't start with JSON
+                                    json_format_detected = False
+                                    logger.warning(
+                                        f"✗ Non-JSON format detected at chunk {chunk_count} - "
+                                        f"Response starts with: '{stripped_completion[:50]}...'"
+                                    )
+                                    
+                                    # Early retry if non-JSON detected and this is first attempt
+                                    if retry_count == 0 and session_id and agent_input:
+                                        logger.warning(
+                                            "Triggering early retry due to non-JSON format detection"
+                                        )
+                                        # Stop processing current stream and retry immediately
+                                        return self._retry_agent_with_json_instruction(
+                                            session_id, agent_input, retry_count
+                                        )
                     
                     elif 'trace' in event:
                         # Log trace events for debugging
                         trace = event['trace']
                         if isinstance(trace, dict) and 'orchestrationTrace' in trace:
                             orch_trace = trace['orchestrationTrace']
-                            logger.debug(f"Orchestration trace: {json.dumps(orch_trace, indent=2, default=str)}")
+                            logger.debug(
+                                f"Orchestration trace: {json.dumps(orch_trace, indent=2, default=str)}"
+                            )
             
             # Check if completion is empty
             if not completion or len(completion.strip()) == 0:
@@ -1334,20 +1421,25 @@ class UsageInsightsService:
                 logger.info("Successfully parsed agent response as JSON")
             except json.JSONDecodeError as e:
                 logger.error(f"JSON decode error: {str(e)}")
-                # If response is not JSON, treat as text analysis
-                parsed_response = {
-                    'analysis_type': 'unknown',
-                    'timestamp': datetime.now().isoformat(),
-                    'data': {},
-                    'recommendations': []
-                }
+                
+                # Retry once with special instructions if this is the first attempt
+                if retry_count == 0 and session_id and agent_input:
+                    return self._retry_agent_with_json_instruction(
+                        session_id, agent_input, retry_count
+                    )
+                
+                # If retry failed or this was already a retry, raise error
+                logger.error(f"Failed to parse JSON after {retry_count + 1} attempt(s)")
+                raise BedrockAgentError(f"Agent response is not valid JSON: {str(e)}")
             
             return parsed_response
             
         except BedrockAgentError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error processing agent response: {str(e)}", exc_info=True)
+            logger.error(
+                f"Unexpected error processing agent response: {str(e)}", exc_info=True
+            )
             raise BedrockAgentError(f"Error processing agent response: {str(e)}")
     
     def _extract_ai_insights(self, agent_response: Dict[str, Any]) -> List[Dict[str, Any]]:

@@ -1,7 +1,4 @@
 import * as cdk from "aws-cdk-lib";
-import * as s3 from "aws-cdk-lib/aws-s3";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
-import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as dsql from "aws-cdk-lib/aws-dsql";
 import { Construct } from "constructs";
@@ -10,39 +7,7 @@ export class ChurnAgentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // S3 bucket for React app
-    const reactAppBucket = new s3.Bucket(this, "ReactAppBucket", {
-      bucketName: `churn-agent-react-app-${this.account}-${this.region}`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-    });
 
-    // CloudFront Distribution with no caching
-    const distribution = new cloudfront.Distribution(
-      this,
-      "ReactAppDistribution",
-      {
-        defaultBehavior: {
-          origin:
-            origins.S3BucketOrigin.withOriginAccessControl(reactAppBucket),
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          viewerProtocolPolicy:
-            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        },
-        errorResponses: [
-          {
-            httpStatus: 404,
-            responseHttpStatus: 200,
-            responsePagePath: "/index.html",
-          },
-          {
-            httpStatus: 403,
-            responseHttpStatus: 200,
-            responsePagePath: "/index.html",
-          },
-        ],
-      }
-    );
 
     // Aurora DSQL Cluster (L1 construct)
     const dsqlCluster = new dsql.CfnCluster(this, "ChurnAgentDSQLCluster", {
@@ -280,15 +245,6 @@ export class ChurnAgentStack extends cdk.Stack {
     }));
 
     // Outputs
-    new cdk.CfnOutput(this, "ReactAppBucketName", {
-      value: reactAppBucket.bucketName,
-      description: "S3 bucket name for React app",
-    });
-
-    new cdk.CfnOutput(this, "CloudFrontDistributionUrl", {
-      value: `https://${distribution.distributionDomainName}`,
-      description: "CloudFront distribution URL",
-    });
 
     new cdk.CfnOutput(this, "DSQLClusterArn", {
       value: dsqlCluster.attrResourceArn,

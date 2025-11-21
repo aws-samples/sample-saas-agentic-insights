@@ -22,7 +22,7 @@ interface AppPlaneStackProps extends cdk.StackProps {
   metricsCollectorLayer?: lambda.LayerVersion;
   metricsEventBusName?: string;
   usageMetricsAggregator?: lambda.IFunction;
-  
+  controlPlaneApiUrl: string;
 }
 
 export class AppPlaneStack extends cdk.Stack {
@@ -473,8 +473,38 @@ export class AppPlaneStack extends cdk.Stack {
       distributionPaths: ['/*'],
     });
 
+    // Build admin panel before deployment
+    const { execSync } = require('child_process');
+    const pathModule = require('path');
+    const fsModule = require('fs');
+    
+    const adminPanelPath = pathModule.join(__dirname, '../web/admin-panel');
+    const envPath = pathModule.join(adminPanelPath, '.env');
+    
+    try {
+      const region = execSync('aws configure get region', { encoding: 'utf-8' }).trim();
+      let apiUrl = '';
+      
+      try {
+        apiUrl = execSync(
+          `aws cloudformation describe-stacks --stack-name AgenticInsightsControlPlane --region ${region} --query "Stacks[0].Outputs[?OutputKey=='ControlPlaneApiUrl'].OutputValue" --output text`,
+          { encoding: 'utf-8' }
+        ).trim();
+      } catch {
+        apiUrl = props.controlPlaneApiUrl;
+      }
+      
+      const envContent = `VITE_REGION=${region}\nVITE_CONTROL_PLANE_API_URL=${apiUrl}`;
+      fsModule.writeFileSync(envPath, envContent);
+      
+      execSync('npm ci', { cwd: adminPanelPath, stdio: 'inherit' });
+      execSync('npm run build', { cwd: adminPanelPath, stdio: 'inherit' });
+    } catch (error) {
+      console.warn('Failed to build admin panel:', error);
+    }
+    
     new s3deploy.BucketDeployment(this, 'AdminPanelDeployment', {
-      sources: [s3deploy.Source.asset('web/admin-panel')],
+      sources: [s3deploy.Source.asset('web/admin-panel/dist')],
       destinationBucket: adminPanelBucket,
       distribution: adminPanelDistribution,
       distributionPaths: ['/*'],
@@ -648,13 +678,11 @@ export class AppPlaneStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/app-plane/product-desc'),
-      layers: props.metricsCollectorLayer ? [props.metricsCollectorLayer] : [],
       environment: {
         BEDROCK_AGENT_ID: this.bedrockAgent.attrAgentId,
         BEDROCK_AGENT_ALIAS_ID: this.bedrockAgentAlias.attrAgentAliasId,
         CLAUDE_INPUT_TOKEN_PRICE: '0.00025',
         CLAUDE_OUTPUT_TOKEN_PRICE: '0.00125',
-        METRICS_EVENT_BUS_NAME: props.metricsEventBusName || props.eventBus.eventBusName,
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -683,15 +711,6 @@ export class AppPlaneStack extends cdk.Stack {
         `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${agentModel}`,
       ],
     }));
-
-    // EventBridge permissions for metrics publishing
-    if (props.metricsCollectorLayer) {
-      productDescFunction.addToRolePolicy(new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['events:PutEvents'],
-        resources: [props.eventBus.eventBusArn],
-      }));
-    }
 
     // Create AI resource
     const aiResource = this.appPlaneApi.root.addResource('ai');

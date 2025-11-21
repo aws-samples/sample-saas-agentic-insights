@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, TrendingDown, User } from "lucide-react";
+import { LogOut, TrendingDown, User, DollarSign, Activity, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -37,13 +37,33 @@ export default function Layout() {
   };
 
   const navItems = [
-    // { path: '/tenants', label: 'Tenant Management', icon: Users },
-    // { path: '/cost-analysis', label: 'Cost Analysis', icon: DollarSign, badge: 'AI' },
+    {
+      path: "/tenants",
+      label: "Tenant Management",
+      icon: Users,
+      badge: null,
+      gradient: null,
+    },
+    {
+      path: "/cost-analysis",
+      label: "Cost Analysis",
+      icon: DollarSign,
+      badge: "AI",
+      gradient: "from-blue-500 to-cyan-500",
+    },
+    {
+      path: "/usage-analysis",
+      label: "Usage Analysis",
+      icon: Activity,
+      badge: "AI",
+      gradient: "from-purple-500 to-pink-500",
+    },
     {
       path: "/churn-analysis",
       label: "Churn Analysis",
       icon: TrendingDown,
       badge: "AI",
+      gradient: "from-orange-400 to-red-400",
     },
   ];
 
@@ -60,7 +80,7 @@ export default function Layout() {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map(({ path, label, icon: Icon, badge }) => (
+                  {navItems.map(({ path, label, icon: Icon, badge, gradient }) => (
                     <SidebarMenuItem key={path}>
                       <SidebarMenuButton
                         asChild
@@ -70,7 +90,7 @@ export default function Layout() {
                           <Icon className="w-5 h-5" />
                           <span>{label}</span>
                           {badge && (
-                            <span className="ml-auto bg-gradient-to-r from-purple-500 to-blue-500 text-xs px-2 py-1 rounded-full">
+                            <span className={`ml-auto bg-gradient-to-r ${gradient} text-xs px-2 py-1 rounded-full`}>
                               {badge}
                             </span>
                           )}

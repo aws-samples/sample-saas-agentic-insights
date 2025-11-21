@@ -51,9 +51,13 @@ fi
 
 print_status "Using AWS region: $REGION"
 
+# Get absolute paths
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Deploy CDK stack
 print_status "Deploying Churn Agent CDK stack..."
-cd "$(dirname "$0")/.."
+cd "$PROJECT_ROOT"
 npx cdk deploy AgenticInsightsChurnAgent --require-approval never
 
 # Get stack outputs
@@ -62,8 +66,18 @@ STACK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name AgenticInsightsC
 
 # Extract values from outputs
 BEDROCK_ROLE_ARN=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="BedrockAgentRoleArn") | .OutputValue')
-S3_BUCKET=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="ReactAppBucketName") | .OutputValue')
-CLOUDFRONT_URL=$(echo $STACK_OUTPUTS | jq -r '.[] | select(.OutputKey=="CloudFrontDistributionUrl") | .OutputValue')
+
+# Get App Plane outputs for Admin Panel
+APP_PLANE_OUTPUTS=$(aws cloudformation describe-stacks --stack-name AgenticInsightsAppPlane --region $REGION --query 'Stacks[0].Outputs' --output json)
+ADMIN_PANEL_URL=$(echo $APP_PLANE_OUTPUTS | jq -r '.[] | select(.OutputKey=="AdminPanelUrl") | .OutputValue')
+ADMIN_PANEL_BUCKET=$(aws cloudformation describe-stack-resources --stack-name AgenticInsightsAppPlane --query "StackResources[?LogicalResourceId=='AdminPanelBucket974362C9'].PhysicalResourceId" --output text)
+
+if [ -z "$ADMIN_PANEL_BUCKET" ]; then
+    print_error "Could not find Admin Panel bucket. Please check if AgenticInsightsAppPlane stack exists."
+    exit 1
+fi
+
+
 
 # Get Control Plane outputs for admin user pool
 CONTROL_OUTPUTS=$(aws cloudformation describe-stacks --stack-name AgenticInsightsControlPlane --region $REGION --query 'Stacks[0].Outputs' --output json)
@@ -74,7 +88,7 @@ print_status "Stack outputs retrieved successfully"
 
 # Setup AgentCore CLI and configure
 print_status "Setting up AgentCore CLI..."
-cd src/control-plane/agents/churn-agent
+cd "$PROJECT_ROOT/src/control-plane/agents/churn-agent"
 
 # Install AgentCore CLI toolkit
 pip install bedrock-agentcore-starter-toolkit pyyaml
@@ -120,40 +134,49 @@ agentcore configure \
     --execution-role "$BEDROCK_ROLE_ARN" \
     --name "churn_agent" \
     --authorizer-config "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"$DISCOVERY_URL\",\"allowedClients\":[\"$CLIENT_ID\"]}}" \
-    --non-interactive
+    --non-interactive || true
 
 print_success "AgentCore configured successfully"
 
-cd - > /dev/null
-
-# Call the launch script and extract ARN
+# Launch churn agent
 print_status "Launching churn agent..."
-SCRIPT_DIR="$(dirname "$0")"
-LAUNCH_OUTPUT=$("$SCRIPT_DIR/lab4.1-launch-churn-agent.sh")
+cd "$PROJECT_ROOT"
+
+set +e
+LAUNCH_OUTPUT=$("$SCRIPT_DIR/lab4.1-launch-churn-agent.sh" 2>&1)
+set -e
+
+echo "$LAUNCH_OUTPUT"
+
 AGENT_ARN=$(echo "$LAUNCH_OUTPUT" | grep -o 'arn:aws:bedrock-agentcore:[^[:space:]]*' | head -1)
+
+if [ -z "$AGENT_ARN" ]; then
+    print_error "Failed to extract Agent ARN from launch output"
+    exit 1
+fi
 
 # Update frontend environment files
 print_status "Updating frontend environment files..."
 
-cat > web/churn-agent-ui/.env << EOF
+mkdir -p "$PROJECT_ROOT/web/admin-panel"
+
+cat > "$PROJECT_ROOT/web/admin-panel/.env" << EOF
 VITE_REGION=$REGION
-VITE_CHURN_AGENT_ARN=$AGENT_ARN
 VITE_CONTROL_PLANE_API_URL=$CONTROL_PLANE_API_URL
+VITE_CHURN_AGENT_ARN=$AGENT_ARN
 EOF
 
-print_success "Environment files updated"
+print_success "Environment file updated"
 
-# Build and deploy frontend
-print_status "Building and deploying React frontend..."
-cd web/churn-agent-ui
+# Redeploy Admin Panel with updated environment
+print_status "Redeploying Admin Panel with Churn Agent configuration..."
+cd "$PROJECT_ROOT/web/admin-panel"
 
 npm install
 npm run build
+aws s3 sync dist/ s3://$ADMIN_PANEL_BUCKET --delete --region $REGION
 
-print_status "Uploading build to S3 bucket: $S3_BUCKET"
-aws s3 sync dist/ s3://$S3_BUCKET --delete --region $REGION
-
-print_success "Frontend deployed successfully"
+print_success "Admin Panel redeployed successfully"
 
 # Display deployment summary
 echo ""
@@ -162,9 +185,9 @@ echo "================================"
 echo ""
 echo "📊 Churn Agent Resources:"
 echo "  • AgentCore Runtime ARN: $AGENT_ARN"
-echo "  • Frontend URL: $CLOUDFRONT_URL"
+echo "  • Admin Panel URL: $ADMIN_PANEL_URL"
 echo "✅ Next Steps:"
-echo "  1. Access the churn agent UI at: $CLOUDFRONT_URL"
+echo "  1. Access the churn agent UI at: $ADMIN_PANEL_URL"
 echo "  2. Use your admin credentials to authenticate"
 echo "  3. Start analyzing customer churn patterns"
 echo ""

@@ -48,6 +48,7 @@ print_status "Deploying churn agent to AgentCore Runtime..."
 set +e
 LAUNCH_OUTPUT=$(agentcore launch \
     --agent "churn_agent" \
+    --auto-update-on-conflict \
     --env "DSQL_CLUSTER_ID=$DSQL_CLUSTER_ID" \
     --env "DSQL_REGION=$REGION" \
     --env "DSQL_HOST=$DSQL_ENDPOINT" \
