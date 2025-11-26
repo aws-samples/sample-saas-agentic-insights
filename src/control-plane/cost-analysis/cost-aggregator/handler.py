@@ -90,8 +90,15 @@ def aggregate_usage_metrics(tenant_id, date, event_type, metadata, tier_name):
         input_tokens = metadata.get('input_tokens', 0)
         output_tokens = metadata.get('output_tokens', 0)
         
-        update_metric_sum(aggregation_table, tenant_id, date, 'bedrock_input_tokens', input_tokens, estimated_cost, tier_name)
-        update_metric_sum(aggregation_table, tenant_id, date, 'bedrock_output_tokens', output_tokens, 0, tier_name)  # Cost already counted in input_tokens
+        # Use actual Claude Sonnet 4.5 pricing to split costs
+        CLAUDE_SONNET_INPUT_TOKEN_PRICE = 0.000003  # $3.00 per million
+        CLAUDE_SONNET_OUTPUT_TOKEN_PRICE = 0.000015  # $15.00 per million
+        
+        input_cost = input_tokens * CLAUDE_SONNET_INPUT_TOKEN_PRICE
+        output_cost = output_tokens * CLAUDE_SONNET_OUTPUT_TOKEN_PRICE
+        
+        update_metric_sum(aggregation_table, tenant_id, date, 'bedrock_input_tokens', input_tokens, input_cost, tier_name)
+        update_metric_sum(aggregation_table, tenant_id, date, 'bedrock_output_tokens', output_tokens, output_cost, tier_name)
         
     elif event_type == 's3.operation':
         requests = 1
