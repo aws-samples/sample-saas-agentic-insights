@@ -63,8 +63,9 @@ def estimate_tokens(text: str) -> int:
 # Environment variables
 BEDROCK_AGENT_ID = os.environ.get('BEDROCK_AGENT_ID')
 BEDROCK_AGENT_ALIAS_ID = os.environ.get('BEDROCK_AGENT_ALIAS_ID', 'TSTALIASID')
-CLAUDE_INPUT_TOKEN_PRICE = float(os.environ.get('CLAUDE_INPUT_TOKEN_PRICE', '0.000003'))
-CLAUDE_OUTPUT_TOKEN_PRICE = float(os.environ.get('CLAUDE_OUTPUT_TOKEN_PRICE', '0.000015'))
+# Claude Sonnet 4.5 pricing (per token)
+CLAUDE_INPUT_TOKEN_PRICE = 0.000003  # $3.00 per million tokens
+CLAUDE_OUTPUT_TOKEN_PRICE = 0.000015  # $15.00 per million tokens
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
@@ -295,8 +296,8 @@ def calculate_usage_and_cost(input_tokens: int, output_tokens: int, tenant_id: s
     """Calculate token usage and costs"""
     try:
         total_tokens = input_tokens + output_tokens
-        input_cost = (input_tokens / 1000) * CLAUDE_INPUT_TOKEN_PRICE
-        output_cost = (output_tokens / 1000) * CLAUDE_OUTPUT_TOKEN_PRICE
+        input_cost = input_tokens * CLAUDE_INPUT_TOKEN_PRICE
+        output_cost = output_tokens * CLAUDE_OUTPUT_TOKEN_PRICE
         total_cost = input_cost + output_cost
         
         return {
