@@ -362,7 +362,12 @@ def calculate_engagement_statistics(tenant_metrics: List[Dict]) -> Dict:
 def get_all_tenants(tenants_table) -> List[Dict]:
     """Retrieve all tenants from DynamoDB"""
     try:
-        response = tenants_table.scan()
+        lab_tenant_ids = ['tenant-acme', 'tenant-globex', 'tenant-initech']
+        scan_kwargs = {
+                'FilterExpression': Attr('status').eq('active') & Attr('tenant_id').is_in(lab_tenant_ids),
+                'Limit': 100  # Process in batches
+            }
+        response = tenants_table.scan(**scan_kwargs)
         tenants = response.get('Items', [])
         
         # Handle pagination if needed
@@ -384,12 +389,3 @@ def get_tenant(tenants_table, tenant_id: str) -> Optional[Dict]:
     except Exception as e:
         print(f"Error retrieving tenant {tenant_id}: {str(e)}")
         return None
-
-
-
-
-
-
-
-
-
