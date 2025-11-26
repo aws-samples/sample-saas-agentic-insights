@@ -170,13 +170,14 @@ def get_all_tenants(tenants_table, date_range: Optional[Dict] = None) -> List[Di
     OPTIMIZATION: Implements pagination to handle large tenant counts efficiently.
     """
     try:
+        lab_tenant_ids = ['tenant-acme', 'tenant-initech']
         tenants = []
         last_evaluated_key = None
         
         # Paginate through all tenants
         while True:
             scan_kwargs = {
-                'FilterExpression': Attr('status').eq('active'),
+                'FilterExpression': Attr('status').eq('active') & Attr('tenant_id').is_in(lab_tenant_ids),
                 'Limit': 100  # Process in batches
             }
             
