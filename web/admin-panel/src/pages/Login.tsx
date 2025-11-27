@@ -25,7 +25,7 @@ export default function Login() {
         localStorage.setItem('adminToken', data.tokens.id_token);
         localStorage.setItem('adminAccessToken', data.tokens.access_token);
         localStorage.setItem('adminRefreshToken', data.tokens.refresh_token);
-        navigate('/churn-analysis');
+        navigate('/tenants');
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Login failed');
