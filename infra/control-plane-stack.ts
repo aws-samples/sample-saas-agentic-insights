@@ -10,6 +10,7 @@ import { Construct } from 'constructs';
 
 export class ControlPlaneStack extends cdk.Stack {
   public readonly eventBus: events.EventBus;
+  public readonly tenantsTable: dynamodb.Table;
   public readonly controlPlaneApi: apigateway.RestApi;
   public readonly adminAuthorizer: apigateway.CognitoUserPoolsAuthorizer;
 
@@ -17,7 +18,7 @@ export class ControlPlaneStack extends cdk.Stack {
     super(scope, id, props);
 
     // DynamoDB table for tenant management
-    const tenantsTable = new dynamodb.Table(this, 'TenantsTable', {
+    this.tenantsTable = new dynamodb.Table(this, 'TenantsTable', {
       tableName: 'Tenants',
       partitionKey: { name: 'tenant_id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -25,7 +26,7 @@ export class ControlPlaneStack extends cdk.Stack {
     });
 
     // Add GSI for tenant name lookup
-    tenantsTable.addGlobalSecondaryIndex({
+    this.tenantsTable.addGlobalSecondaryIndex({
       indexName: 'tenant-name-index',
       partitionKey: { name: 'tenant_name', type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
@@ -72,7 +73,7 @@ export class ControlPlaneStack extends cdk.Stack {
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/control-plane/tenant-management'),
       environment: {
-        TENANTS_TABLE: tenantsTable.tableName,
+        TENANTS_TABLE: this.tenantsTable.tableName,
         EVENT_BUS_NAME: this.eventBus.eventBusName,
       },
       timeout: cdk.Duration.seconds(30),
@@ -97,7 +98,7 @@ export class ControlPlaneStack extends cdk.Stack {
       environment: {
         ADMIN_USER_POOL_ID: adminUserPool.userPoolId,
         ADMIN_USER_POOL_CLIENT_ID: adminUserPoolClient.userPoolClientId,
-        TENANTS_TABLE: tenantsTable.tableName,
+        TENANTS_TABLE: this.tenantsTable.tableName,
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -127,7 +128,7 @@ export class ControlPlaneStack extends cdk.Stack {
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('src/control-plane/tenant-provisioning'),
       environment: {
-        TENANTS_TABLE: tenantsTable.tableName,
+        TENANTS_TABLE: this.tenantsTable.tableName,
       },
       timeout: cdk.Duration.minutes(5),
     });
@@ -154,9 +155,9 @@ export class ControlPlaneStack extends cdk.Stack {
 
     // Grant permissions
     tenantManagementFunction.grantInvoke(registrationFunction);
-    tenantsTable.grantReadWriteData(tenantManagementFunction);
-    tenantsTable.grantReadWriteData(tenantProvisioningFunction);
-    tenantsTable.grantReadData(loginFunction);  // Login only needs read access
+    this.tenantsTable.grantReadWriteData(tenantManagementFunction);
+    this.tenantsTable.grantReadWriteData(tenantProvisioningFunction);
+    this.tenantsTable.grantReadData(loginFunction);  // Login only needs read access
 
     // Grant Bedrock permissions to insight dashboard function
     // Grant Bedrock Agent Runtime permissions to insight dashboard function
@@ -287,7 +288,7 @@ export class ControlPlaneStack extends cdk.Stack {
 
     // Outputs
     new cdk.CfnOutput(this, 'TenantsTableName', {
-      value: tenantsTable.tableName,
+      value: this.tenantsTable.tableName,
       description: 'Tenants Table Name',
     });
   }

@@ -43,6 +43,7 @@ const appPlaneStack = new AppPlaneStack(app, "AgenticInsightsAppPlane", {
   },
   // Pass EventBridge bus from control plane for tenant provisioning
   eventBus: controlPlaneStack.eventBus,
+  tenantsTable: controlPlaneStack.tenantsTable,
   // Pass metrics collector layer for application services
   metricsCollectorLayer: metricsFrameworkStack.metricsCollectorLayer,
   metricsEventBusName: controlPlaneStack.eventBus.eventBusName,

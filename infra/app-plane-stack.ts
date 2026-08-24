@@ -19,6 +19,7 @@ import { Construct } from 'constructs';
 
 interface AppPlaneStackProps extends cdk.StackProps {
   eventBus: events.EventBus;
+  tenantsTable: dynamodb.ITable;
   metricsCollectorLayer?: lambda.LayerVersion;
   metricsEventBusName?: string;
   usageMetricsAggregator?: lambda.IFunction;
@@ -117,13 +118,32 @@ export class AppPlaneStack extends cdk.Stack {
     const authorizerFunction = new lambda.Function(this, 'AuthorizerFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset('src/app-plane/authorizer'),
+      code: lambda.Code.fromAsset('src/app-plane/authorizer', {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+          platform: 'linux/amd64',
+          command: [
+            'bash',
+            '-c',
+            'pip install --no-cache-dir -r requirements.txt -t /asset-output && cp handler.py jwt_validator.py /asset-output/',
+          ],
+        },
+      }),
       environment: {
         BASIC_USER_POOL_ID: basicTierUserPool.userPoolId,
+        BASIC_USER_POOL_CLIENT_ID: basicTierUserPoolClient.userPoolClientId,
         PREMIUM_USER_POOL_ID: premiumTierUserPool.userPoolId,
+        PREMIUM_USER_POOL_CLIENT_ID: premiumTierUserPoolClient.userPoolClientId,
+        TENANTS_TABLE: props.tenantsTable.tableName,
       },
       timeout: cdk.Duration.seconds(30),
     });
+    props.tenantsTable.grantReadData(authorizerFunction);
+    authorizerFunction.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['cognito-idp:ListUserPoolClients'],
+      resources: [`arn:aws:cognito-idp:${this.region}:${this.account}:userpool/*`],
+    }));
 
     // Product Service Lambda
     const productFunction = new lambda.Function(this, 'ProductFunction', {
