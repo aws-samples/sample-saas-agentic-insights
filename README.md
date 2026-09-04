@@ -2,6 +2,10 @@
 
 A comprehensive multi-tenant e-commerce SaaS platform built with AWS serverless technologies, designed as a reference solution for AWS workshops. The platform enables vendors (tenants) to self-provision through a landing page with tier-based deployment strategies.
 
+> **⚠️ Not for production use.** This repository is a reference implementation intended for AWS workshops and demonstrations only. It has not been reviewed or hardened for production workloads. Evaluate and adapt security, resiliency, cost, and operational practices before using any part of this code outside a workshop or sandbox environment.
+>
+> **Amazon Bedrock Agents Classic.** This repository uses Amazon Bedrock Agents Classic, which is no longer available to new customers. For capabilities similar to Amazon Bedrock Agents Classic, explore [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/).
+
 ## 🏗️ Architecture Overview
 
 The solution follows a **Control Plane** and **Application Plane** architecture with **AI-powered features**:
@@ -209,7 +213,7 @@ agentic-insights-saas/
 - JWT-based authentication with Cognito and token expiration handling
 - Lambda authorizer for API protection
 - Role-based access control (tenant_admin vs tenant_user)
-- Cross-tenant access prevention with comprehensive input validation
+- Tenant-scoped input validation on API requests
 
 ### Enhanced User Experience
 - **Responsive Design**: Mobile-optimized layouts with modern CSS animations
@@ -290,7 +294,7 @@ The platform uses EventBridge for decoupled communication:
 
 ## ✨ Implementation Enhancements
 
-Beyond the core specifications, this implementation includes several enhancements for production readiness:
+Beyond the core specifications, this implementation includes several enhancements:
 
 ### 🎨 **User Experience Improvements**
 - **Modular JavaScript Architecture**: Organized into separate files (auth.js, products.js, cart.js, orders.js, users.js) for maintainability
@@ -327,7 +331,7 @@ Beyond the core specifications, this implementation includes several enhancement
 - **Structured Logging**: CloudWatch integration with tenant context
 - **Professional UI/UX**: Modern gradients, hover effects, and smooth transitions
 
-All enhancements maintain full compatibility with the original specifications while providing a production-ready experience.
+All enhancements maintain full compatibility with the original specifications.
 
 ## 🎯 Usage Scenarios
 
