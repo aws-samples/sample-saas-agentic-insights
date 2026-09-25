@@ -219,6 +219,7 @@ def create_premium_user_pool(pool_name: str, tenant_id: str) -> str:
             UserPoolId=user_pool_id,
             ClientName=f"{pool_name}-client",
             GenerateSecret=False,
+            WriteAttributes=['email'],
             ExplicitAuthFlows=[
                 'ALLOW_ADMIN_USER_PASSWORD_AUTH',
                 'ALLOW_USER_PASSWORD_AUTH',
