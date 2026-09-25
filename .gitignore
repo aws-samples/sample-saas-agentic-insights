@@ -15,6 +15,10 @@ cdk.context.json
 # TypeScript
 *.tsbuildinfo
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Environment variables
 .env
 .env.local

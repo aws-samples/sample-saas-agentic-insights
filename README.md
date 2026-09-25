@@ -214,6 +214,10 @@ agentic-insights-saas/
 - Lambda authorizer for API protection
 - Role-based access control (tenant_admin vs tenant_user)
 - Tenant-scoped input validation on API requests
+- Cognito app clients restrict user self-writes to the standard `email` attribute
+
+Existing deployments must migrate previously created Cognito app clients. Follow the
+[Cognito client write-attribute remediation guide](docs/cognito-client-write-attributes-remediation.md).
 
 ### Enhanced User Experience
 - **Responsive Design**: Mobile-optimized layouts with modern CSS animations

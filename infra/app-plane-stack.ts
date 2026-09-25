@@ -82,6 +82,9 @@ export class AppPlaneStack extends cdk.Stack {
         userSrp: true,
         adminUserPassword: true,
       },
+      writeAttributes: new cognito.ClientAttributes().withStandardAttributes({
+        email: true,
+      }),
     });
 
     const premiumTierUserPool = new cognito.UserPool(this, 'PremiumTierUserPool', {
@@ -112,6 +115,9 @@ export class AppPlaneStack extends cdk.Stack {
         userSrp: true,
         adminUserPassword: true,
       },
+      writeAttributes: new cognito.ClientAttributes().withStandardAttributes({
+        email: true,
+      }),
     });
 
     // Lambda Authorizer
